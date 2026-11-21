@@ -7,24 +7,26 @@ library, and the dashboard is plain HTML/CSS/JavaScript embedded with
 ## Package graph
 
 ```
-main
- └── cli
-      ├── config ────────┐
-      ├── doctor         │
-      ├── engine ────────┤
-      │    ├── ffmpeg ───┤
-      │    ├── mediainfo ┘
-      │    └── units
-      ├── watch
-      │    └── engine
-      ├── web
-      │    ├── engine
-      │    ├── doctor
-      │    ├── watch
-      │    └── config
-      ├── ffmpeg
-      ├── term
-      └── version
+main.go                  release/build entry point
+cmd/ffbatch/main.go      go-install entry point
+        │
+        └── cli
+             ├── config
+             ├── doctor
+             ├── engine
+             │    ├── ffmpeg
+             │    ├── mediainfo
+             │    └── units
+             ├── watch
+             │    └── engine
+             ├── web
+             │    ├── engine
+             │    ├── doctor
+             │    ├── watch
+             │    └── config
+             ├── ffmpeg
+             ├── term
+             └── version
 ```
 
 No package imports `cli` or `web`; the engine can be embedded in another
