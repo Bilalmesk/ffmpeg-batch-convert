@@ -1,0 +1,737 @@
+﻿<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <meta name="description" content="FFBatch — a local, fast FFmpeg batch converter with a live dashboard.">
+  <title>FFBatch · FFmpeg batch studio</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/app.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <svg class="sprite" aria-hidden="true" focusable="false">
+    <defs>
+      <symbol id="i-bolt" viewBox="0 0 24 24">
+        <path d="M13 2 4.5 13.5H11l-1 8.5 8.5-11.5H12l1-8.5Z"/>
+      </symbol>
+      <symbol id="i-list" viewBox="0 0 24 24">
+        <path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/>
+      </symbol>
+      <symbol id="i-pulse" viewBox="0 0 24 24">
+        <path d="M3 12h4l2.5-6 4 12 2.5-6h5"/>
+      </symbol>
+      <symbol id="i-folder" viewBox="0 0 24 24">
+        <path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h3.2l2 2.5h7.8A2.5 2.5 0 0 1 21 10v6.5a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 16.5v-9Z"/>
+      </symbol>
+      <symbol id="i-scan" viewBox="0 0 24 24">
+        <path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M4 12h16"/>
+      </symbol>
+      <symbol id="i-sun" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="4"/>
+        <path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/>
+      </symbol>
+      <symbol id="i-moon" viewBox="0 0 24 24">
+        <path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z"/>
+      </symbol>
+      <symbol id="i-refresh" viewBox="0 0 24 24">
+        <path d="M20 11a8 8 0 0 0-14.6-4M4 4v4h4M4 13a8 8 0 0 0 14.6 4M20 20v-4h-4"/>
+      </symbol>
+      <symbol id="i-x" viewBox="0 0 24 24">
+        <path d="m6 6 12 12M18 6 6 18"/>
+      </symbol>
+      <symbol id="i-up" viewBox="0 0 24 24">
+        <path d="M12 19V5M5 12l7-7 7 7"/>
+      </symbol>
+      <symbol id="i-right" viewBox="0 0 24 24">
+        <path d="m9 5 7 7-7 7"/>
+      </symbol>
+      <symbol id="i-download" viewBox="0 0 24 24">
+        <path d="M12 3v12M7 10l5 5 5-5M4 20h16"/>
+      </symbol>
+      <symbol id="i-stop" viewBox="0 0 24 24">
+        <rect x="6" y="6" width="12" height="12" rx="2"/>
+      </symbol>
+      <symbol id="i-play" viewBox="0 0 24 24">
+        <path d="M7 4.5v15l13-7.5-13-7.5Z"/>
+      </symbol>
+      <symbol id="i-check" viewBox="0 0 24 24">
+        <path d="m4 12.5 5 5L20 6.5"/>
+      </symbol>
+      <symbol id="i-alert" viewBox="0 0 24 24">
+        <path d="M12 3 2.5 20h19L12 3Z"/><path d="M12 9v5M12 17.5h.01"/>
+      </symbol>
+      <symbol id="i-clock" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/>
+      </symbol>
+      <symbol id="i-film" viewBox="0 0 24 24">
+        <rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 5v14M17 5v14M3 10h4M3 14h4M17 10h4M17 14h4"/>
+      </symbol>
+      <symbol id="i-spark" viewBox="0 0 24 24">
+        <path d="m12 3 1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3ZM19 16l.9 2.1L22 19l-2.1.9L19 22l-.9-2.1L16 19l2.1-.9L19 16Z"/>
+      </symbol>
+      <symbol id="i-folder-open" viewBox="0 0 24 24">
+        <path d="M3 8V6a1 1 0 0 1 1-1h5l2 2h8a1 1 0 0 1 1 1v2M3 8h18l-2 10a1 1 0 0 1-1 .8H5.5A1 1 0 0 1 4.5 18L3 8Z"/>
+      </symbol>
+      <symbol id="i-copy" viewBox="0 0 24 24">
+        <rect x="9" y="9" width="11" height="11" rx="2"/><path d="M15 9V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h3"/>
+      </symbol>
+      <symbol id="i-eye" viewBox="0 0 24 24">
+        <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>
+      </symbol>
+    </defs>
+  </svg>
+
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 32 32"><path d="M9 24V8l15 8-15 8Z"/></svg>
+        </div>
+        <div class="brand-text">
+          <span class="brand-name">FFBatch</span>
+          <span class="brand-tag">FFmpeg batch studio</span>
+        </div>
+      </div>
+
+      <nav class="nav" aria-label="Sections">
+        <button class="nav-item is-active" data-view="convert" aria-current="page" aria-label="Convert" title="Convert">
+          <svg class="icon" aria-hidden="true"><use href="#i-bolt"></use></svg>
+          <span>Convert</span>
+        </button>
+        <button class="nav-item" data-view="watch" aria-label="Watch" title="Watch">
+          <svg class="icon" aria-hidden="true"><use href="#i-eye"></use></svg>
+          <span>Watch</span>
+          <span class="nav-badge" id="navWatchCount" hidden>0</span>
+        </button>
+        <button class="nav-item" data-view="runs" aria-label="Runs" title="Runs">
+          <svg class="icon" aria-hidden="true"><use href="#i-list"></use></svg>
+          <span>Runs</span>
+          <span class="nav-badge" id="navRunCount" hidden>0</span>
+        </button>
+        <button class="nav-item" data-view="doctor" aria-label="Doctor" title="Doctor">
+          <svg class="icon" aria-hidden="true"><use href="#i-pulse"></use></svg>
+          <span>Doctor</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-spacer"></div>
+
+      <div class="tool-card" id="toolCard">
+        <span class="status-dot" id="toolDot" data-state="checking" aria-hidden="true"></span>
+        <div class="tool-text">
+          <span class="tool-title" id="toolTitle">Checking FFmpeg…</span>
+          <span class="tool-sub" id="toolSub">local toolchain</span>
+        </div>
+      </div>
+
+      <div class="sidebar-foot">
+        <span id="versionLabel">v0.1.0</span>
+        <span aria-hidden="true">·</span>
+        <span>local only</span>
+      </div>
+    </aside>
+
+    <div class="main-wrap">
+      <header class="topbar">
+        <div class="topbar-title">
+          <h1 id="viewTitle">Convert</h1>
+          <p id="viewSubtitle">Stream-copy or re-encode a folder, then watch it happen live.</p>
+        </div>
+        <div class="topbar-actions">
+          <span class="live-pill" id="livePill" data-state="connecting">
+            <span class="live-dot" aria-hidden="true"></span>
+            <span id="liveText">Connecting</span>
+          </span>
+          <button class="icon-btn" id="themeBtn" type="button" aria-label="Switch colour theme">
+            <svg class="icon" aria-hidden="true"><use href="#i-moon" id="themeIcon"></use></svg>
+          </button>
+        </div>
+      </header>
+
+      <main id="main" tabindex="-1">
+        <!-- ============================ CONVERT ============================ -->
+        <section class="view" data-view-panel="convert">
+          <div class="recipes" role="group" aria-label="Quick recipes">
+            <span class="recipes-label">
+              <svg class="icon" aria-hidden="true"><use href="#i-spark"></use></svg>
+              Quick start
+            </span>
+            <button class="chip" type="button" data-recipe="remux-mp4">Remux to MP4</button>
+            <button class="chip" type="button" data-recipe="ts-seeking-fix">TS seeking fix</button>
+            <button class="chip" type="button" data-recipe="encode-mp4">Re-encode</button>
+            <button class="chip" type="button" data-recipe="encode-hevc">HEVC</button>
+            <button class="chip" type="button" data-recipe="rename-ts">MP4 → TS</button>
+          </div>
+
+          <div class="convert-grid">
+            <div class="convert-main">
+              <section class="card">
+                <header class="card-head">
+                  <div>
+                    <h2>Source</h2>
+                    <p>Pick the folder that holds your recordings.</p>
+                  </div>
+                  <span class="pill" id="sourcePill" hidden>0 files</span>
+                </header>
+                <div class="card-body">
+                  <label class="field-label" for="sourcePath">Folder</label>
+                  <div class="input-row">
+                    <div class="input-wrap">
+                      <svg class="icon" aria-hidden="true"><use href="#i-folder"></use></svg>
+                      <input id="sourcePath" type="text" spellcheck="false" autocomplete="off"
+                             placeholder="D:\Recordings" aria-describedby="scanHint">
+                    </div>
+                    <button class="btn btn-ghost" id="browseSource" type="button">Browse</button>
+                    <button class="btn btn-secondary" id="scanBtn" type="button">
+                      <svg class="icon" aria-hidden="true"><use href="#i-scan"></use></svg>
+                      Scan
+                    </button>
+                  </div>
+
+                  <div class="row-between wrap">
+                    <label class="switch">
+                      <input type="checkbox" id="recursive">
+                      <span class="switch-track" aria-hidden="true"></span>
+                      Include subfolders
+                    </label>
+                    <span class="hint" id="scanHint">Uses the extensions in Advanced</span>
+                  </div>
+
+                  <div class="recent" id="recentFolders" aria-label="Recent folders"></div>
+
+                  <div class="scan-summary" id="scanSummary" hidden>
+                    <div class="scan-stats">
+                      <span><strong id="scanCount">0</strong> files selected</span>
+                      <span><strong id="scanSize">0 B</strong></span>
+                      <span class="muted ellipsis" id="scanRootLabel"></span>
+                    </div>
+                    <div class="bulk">
+                      <button class="link-btn" id="selectAll" type="button">All</button>
+                      <button class="link-btn" id="selectNone" type="button">None</button>
+                    </div>
+                  </div>
+
+                  <div class="empty-state" id="sourceEmpty">
+                    <div class="empty-icon" aria-hidden="true">
+                      <svg class="icon"><use href="#i-film"></use></svg>
+                    </div>
+                    <p><strong>No folder scanned yet.</strong></p>
+                    <p class="muted">Choose a folder and hit Scan to preview every file before converting.</p>
+                  </div>
+
+                  <div class="file-wrap" id="fileWrap" hidden>
+                    <ul class="file-list" id="fileList" aria-label="Files to convert"></ul>
+                  </div>
+                  <p class="hint" id="scanTruncated" hidden>Showing the first 5,000 files. Narrow the folder or use a file list.</p>
+                </div>
+              </section>
+
+              <section class="card">
+                <header class="card-head">
+                  <div>
+                    <h2>Output</h2>
+                    <p>Where the new files land and what happens on collisions.</p>
+                  </div>
+                </header>
+                <div class="card-body grid-2">
+                  <div class="field">
+                    <label for="format">Container</label>
+                    <select id="format">
+                      <option value="mp4">MP4</option>
+                      <option value="mkv">MKV</option>
+                      <option value="mov">MOV</option>
+                      <option value="ts">TS</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="overwrite">If the output exists</label>
+                    <select id="overwrite">
+                      <option value="skip">Skip it</option>
+                      <option value="number">Add a number</option>
+                      <option value="overwrite">Replace it</option>
+                      <option value="fail">Fail the job</option>
+                    </select>
+                  </div>
+                  <div class="field span-2">
+                    <label for="outputDir">Output folder <span class="muted">optional</span></label>
+                    <div class="input-row">
+                      <div class="input-wrap">
+                        <svg class="icon" aria-hidden="true"><use href="#i-folder"></use></svg>
+                        <input id="outputDir" type="text" spellcheck="false" autocomplete="off"
+                               placeholder="Leave empty to write next to each source">
+                      </div>
+                      <button class="btn btn-ghost" id="browseOutput" type="button">Browse</button>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            </div>
+
+            <div class="convert-side">
+              <section class="card">
+                <header class="card-head">
+                  <div>
+                    <h2>Mode</h2>
+                    <p>Copy streams or rebuild them.</p>
+                  </div>
+                </header>
+                <div class="card-body">
+                  <div class="segmented" role="group" aria-label="Conversion mode">
+                    <button type="button" data-mode="remux">
+                      <strong>Remux</strong>
+                      <small>stream copy</small>
+                    </button>
+                    <button type="button" data-mode="encode">
+                      <strong>Encode</strong>
+                      <small>x264 / x265</small>
+                    </button>
+                    <button type="button" data-mode="rename">
+                      <strong>Rename</strong>
+                      <small>extension</small>
+                    </button>
+                  </div>
+                  <p class="mode-note" id="modeNote"></p>
+
+                  <div class="field">
+                    <label for="audioTracks">Audio tracks</label>
+                    <select id="audioTracks">
+                      <option value="all">All tracks</option>
+                      <option value="first">First track only</option>
+                      <option value="preferred">Preferred language</option>
+                    </select>
+                  </div>
+                  <div class="field" id="audioLanguageField" hidden>
+                    <label for="audioLanguage">Language code</label>
+                    <input id="audioLanguage" type="text" list="languageOptions" placeholder="ara" maxlength="7">
+                    <datalist id="languageOptions">
+                      <option value="ara">Arabic</option>
+                      <option value="eng">English</option>
+                      <option value="fre">French</option>
+                      <option value="ger">German</option>
+                      <option value="spa">Spanish</option>
+                      <option value="tur">Turkish</option>
+                      <option value="per">Persian</option>
+                      <option value="urd">Urdu</option>
+                    </datalist>
+                  </div>
+
+                  <div class="option-group" id="encodeOptions">
+                    <div class="field">
+                      <label for="videoCodec">Video codec</label>
+                      <select id="videoCodec">
+                        <option value="h264">H.264 — universal</option>
+                        <option value="h265">H.265 / HEVC — smaller</option>
+                      </select>
+                    </div>
+
+                    <div class="field">
+                      <div class="row-between">
+                        <label for="crf">Quality (CRF)</label>
+                        <output id="crfLabel" for="crf">22 · balanced</output>
+                      </div>
+                      <input type="range" id="crf" min="0" max="51" step="1" value="22">
+                      <div class="range-scale" aria-hidden="true"><span>better</span><span>smaller</span></div>
+                    </div>
+
+                    <div class="field">
+                      <label for="preset">Speed preset</label>
+                      <select id="preset">
+                        <option value="ultrafast">ultrafast</option>
+                        <option value="superfast">superfast</option>
+                        <option value="veryfast">veryfast</option>
+                        <option value="faster">faster</option>
+                        <option value="fast">fast</option>
+                        <option value="medium">medium</option>
+                        <option value="slow">slow</option>
+                        <option value="slower">slower</option>
+                        <option value="veryslow">veryslow</option>
+                      </select>
+                    </div>
+
+                    <div class="grid-2">
+                      <div class="field">
+                        <label for="audioCodec">Audio</label>
+                        <select id="audioCodec">
+                          <option value="copy">Copy</option>
+                          <option value="aac">AAC</option>
+                          <option value="opus">Opus</option>
+                          <option value="none">Drop</option>
+                        </select>
+                      </div>
+                      <div class="field" id="audioRateField">
+                        <label for="audioBitrate">Bitrate</label>
+                        <input id="audioBitrate" type="text" inputmode="numeric" placeholder="192k">
+                      </div>
+                    </div>
+
+                    <div class="field">
+                      <label for="subtitleCodec">Subtitles</label>
+                      <select id="subtitleCodec">
+                        <option value="auto">Auto (safe)</option>
+                        <option value="copy">Copy</option>
+                        <option value="mov_text">Convert to mov_text</option>
+                        <option value="none">Drop</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <details class="advanced">
+                    <summary>Advanced settings</summary>
+                    <div class="advanced-body">
+                      <div class="grid-2">
+                        <div class="field">
+                          <label for="workers">Workers</label>
+                          <input id="workers" type="number" min="1" max="32" step="1">
+                        </div>
+                        <div class="field">
+                          <label for="aspect">Force aspect</label>
+                          <input id="aspect" type="text" list="aspectOptions" placeholder="keep source">
+                          <datalist id="aspectOptions">
+                            <option value="16:9"></option>
+                            <option value="4:3"></option>
+                            <option value="21:9"></option>
+                          </datalist>
+                        </div>
+                      </div>
+                      <div class="grid-2">
+                        <div class="field">
+                          <label for="trimStart">Trim start</label>
+                          <input id="trimStart" type="text" placeholder="00:00:00">
+                        </div>
+                        <div class="field">
+                          <label for="trimEnd">Trim end</label>
+                          <input id="trimEnd" type="text" placeholder="end of file">
+                        </div>
+                      </div>
+                      <p class="hint">Trim uses input seeking; stream copy starts at the nearest keyframe.</p>
+                      <div class="field">
+                        <label for="extensions">Source extensions</label>
+                        <input id="extensions" type="text" spellcheck="false" placeholder="ts, mkv, mov">
+                      </div>
+                      <div class="checks">
+                        <label class="check"><input type="checkbox" id="faststart"> MP4 faststart index</label>
+                        <label class="check"><input type="checkbox" id="genpts"> Regenerate timestamps</label>
+                        <label class="check"><input type="checkbox" id="deleteSource"> Delete sources after success</label>
+                        <label class="check"><input type="checkbox" id="dryRun"> Dry run — plan only</label>
+                      </div>
+                      <div class="field">
+                        <label for="logFile">Log file <span class="muted">optional</span></label>
+                        <input id="logFile" type="text" spellcheck="false" placeholder="ffbatch.log">
+                      </div>
+                    </div>
+                  </details>
+                </div>
+              </section>
+
+              <section class="card command-card">
+                <header class="card-head">
+                  <div>
+                    <h2>Command preview</h2>
+                    <p>Approximate FFmpeg call for one file.</p>
+                  </div>
+                  <button class="icon-btn" id="copyCommand" type="button" aria-label="Copy command preview" title="Copy command">
+                    <svg class="icon" aria-hidden="true"><use href="#i-copy"></use></svg>
+                  </button>
+                </header>
+                <div class="card-body">
+                  <pre class="command-preview"><code id="commandPreview">ffmpeg -i "input.ts" -c copy "output.mp4"</code></pre>
+                  <p class="hint">Stream maps adapt per file. MP4 drops bitmap subtitles automatically; use MKV to keep them.</p>
+                </div>
+              </section>
+
+              <section class="launch-card">
+                <button class="run-now" id="activeRunLink" type="button" hidden>
+                  <span class="run-now-dot" aria-hidden="true"></span>
+                  <span id="activeRunText">Batch running</span>
+                  <span class="run-now-arrow" aria-hidden="true">→</span>
+                </button>
+                <div class="launch-top">
+                  <span id="runSummary">Choose a folder to begin</span>
+                  <span class="launch-estimate" id="runEstimate"></span>
+                </div>
+                <label class="check save-check">
+                  <input type="checkbox" id="saveConfig" checked>
+                  Remember these settings
+                </label>
+                <button class="btn btn-primary btn-block" id="startBtn" type="button" disabled>
+                  <svg class="icon" aria-hidden="true"><use href="#i-play"></use></svg>
+                  Start batch
+                </button>
+                <p class="hint center" id="startHint">Nothing runs until you start.</p>
+              </section>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================= WATCH ============================ -->
+        <section class="view" data-view-panel="watch" hidden>
+          <div class="watch-layout">
+            <div class="watch-main">
+              <section class="card">
+                <header class="card-head">
+                  <div>
+                    <h2>Watched folders</h2>
+                    <p>New files are converted after they stop changing.</p>
+                  </div>
+                  <button class="btn btn-secondary" id="addWatchBtn" type="button">Add folder</button>
+                </header>
+                <div class="watch-list" id="watchList"></div>
+                <div class="empty-state" id="watchEmpty">
+                  <div class="empty-icon" aria-hidden="true">
+                    <svg class="icon"><use href="#i-eye"></use></svg>
+                  </div>
+                  <p><strong>No folders watched yet.</strong></p>
+                  <p class="muted">Add a folder and drop recordings into it. FFBatch waits for each file to settle, then converts it with your current settings.</p>
+                  <button class="btn btn-primary" id="watchEmptyAdd" type="button">Add a folder</button>
+                </div>
+              </section>
+
+              <section class="card">
+                <header class="card-head">
+                  <div>
+                    <h2>Watcher activity</h2>
+                    <p>Detected files, queued batches and errors.</p>
+                  </div>
+                  <span class="pill" id="watchStatusPill">Idle</span>
+                </header>
+                <ol class="watch-events" id="watchEvents"></ol>
+                <div class="empty-mini" id="watchEventsEmpty">No activity yet.</div>
+              </section>
+            </div>
+
+            <aside class="card watch-help">
+              <header class="card-head">
+                <div>
+                  <h2>How watch works</h2>
+                  <p>Hands-off batch conversion.</p>
+                </div>
+              </header>
+              <div class="card-body">
+                <ol class="steps">
+                  <li><span aria-hidden="true">1</span><p><strong>Drop files</strong> into a watched folder, from a recorder or a network share.</p></li>
+                  <li><span aria-hidden="true">2</span><p><strong>Settle</strong> — FFBatch waits until size and modified time stop changing.</p></li>
+                  <li><span aria-hidden="true">3</span><p><strong>Convert</strong> — one batch at a time, using the settings on the Convert tab.</p></li>
+                </ol>
+                <p class="hint">Watchers run while FFBatch is open. Output folders and files already in the target format are ignored.</p>
+                <p class="hint" id="watchTiming"></p>
+                <button class="btn btn-ghost" id="watchSettingsBtn" type="button">Open conversion settings</button>
+              </div>
+            </aside>
+          </div>
+        </section>
+
+        <!-- ============================= RUNS ============================= -->
+        <section class="view" data-view-panel="runs" hidden>
+          <div class="runs-layout">
+            <aside class="card run-history">
+              <header class="card-head">
+                <div>
+                  <h2>History</h2>
+                  <p>This session</p>
+                </div>
+                <button class="icon-btn" id="refreshRuns" type="button" aria-label="Refresh runs">
+                  <svg class="icon" aria-hidden="true"><use href="#i-refresh"></use></svg>
+                </button>
+              </header>
+              <div class="run-list" id="runList"></div>
+              <div class="empty-mini" id="runsEmpty">
+                <p class="muted">No batches yet. Start one from the Convert tab.</p>
+              </div>
+            </aside>
+
+            <section class="card run-detail-card">
+              <div class="empty-state tall" id="runPlaceholder">
+                <div class="empty-icon" aria-hidden="true">
+                  <svg class="icon"><use href="#i-list"></use></svg>
+                </div>
+                <p><strong>Nothing selected.</strong></p>
+                <p class="muted">Pick a run from the list, or start a new batch.</p>
+                <button class="btn btn-secondary" id="newBatchBtn" type="button">New batch</button>
+              </div>
+
+              <div id="runDetail" hidden>
+                <header class="run-head">
+                  <div class="run-head-text">
+                    <span class="eyebrow" id="runEyebrow">run</span>
+                    <h2 id="runTitle">Batch</h2>
+                    <p class="muted" id="runMeta"></p>
+                  </div>
+                  <div class="run-actions">
+                    <button class="btn btn-ghost" id="retryRun" type="button" hidden>
+                      <svg class="icon" aria-hidden="true"><use href="#i-refresh"></use></svg>
+                      <span id="retryLabel">Retry failed</span>
+                    </button>
+                    <button class="btn btn-danger" id="cancelRun" type="button" hidden>
+                      <svg class="icon" aria-hidden="true"><use href="#i-stop"></use></svg>
+                      Cancel
+                    </button>
+                    <button class="btn btn-ghost" id="revealRun" type="button" title="Open the output folder">
+                      <svg class="icon" aria-hidden="true"><use href="#i-folder-open"></use></svg>
+                      Folder
+                    </button>
+                    <button class="btn btn-ghost" id="reportJson" type="button">
+                      <svg class="icon" aria-hidden="true"><use href="#i-download"></use></svg>
+                      JSON
+                    </button>
+                    <button class="btn btn-ghost" id="reportCsv" type="button">CSV</button>
+                  </div>
+                </header>
+
+                <div class="overall">
+                  <div class="overall-top">
+                    <span>Overall progress</span>
+                    <strong id="overallPercent">0%</strong>
+                  </div>
+                  <progress id="overallProgress" max="100" value="0" aria-label="Overall batch progress"></progress>
+                  <div class="stat-grid">
+                    <div class="stat"><span id="statDone">0</span><small>converted</small></div>
+                    <div class="stat"><span id="statSkipped">0</span><small>skipped</small></div>
+                    <div class="stat"><span id="statFailed">0</span><small>failed</small></div>
+                    <div class="stat"><span id="statSpeed">—</span><small>average speed</small></div>
+                    <div class="stat"><span id="statData">—</span><small>written</small></div>
+                    <div class="stat"><span id="statElapsed">—</span><small>elapsed</small></div>
+                  </div>
+                </div>
+
+                <div class="jobs-toolbar">
+                  <div class="filters" role="group" aria-label="Filter jobs">
+                    <button class="filter is-active" type="button" data-filter="all">All</button>
+                    <button class="filter" type="button" data-filter="running">Running</button>
+                    <button class="filter" type="button" data-filter="done">Done</button>
+                    <button class="filter" type="button" data-filter="skipped">Skipped</button>
+                    <button class="filter" type="button" data-filter="failed">Failed</button>
+                  </div>
+                  <span class="hint" id="jobCountLabel"></span>
+                </div>
+
+                <ul class="job-list" id="jobList" aria-label="Jobs"></ul>
+
+                <details class="activity">
+                  <summary>Activity log <span class="pill tiny" id="logCount">0</span></summary>
+                  <ol id="logList"></ol>
+                </details>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <!-- ============================ DOCTOR ============================ -->
+        <section class="view" data-view-panel="doctor" hidden>
+          <div class="doctor-layout">
+            <section class="card">
+              <header class="card-head">
+                <div>
+                  <h2>Environment</h2>
+                  <p>What this machine is running.</p>
+                </div>
+                <button class="icon-btn" id="doctorRefresh" type="button" aria-label="Re-run checks">
+                  <svg class="icon" aria-hidden="true"><use href="#i-refresh"></use></svg>
+                </button>
+              </header>
+              <dl class="kv" id="doctorEnv"></dl>
+            </section>
+
+            <section class="card doctor-checks">
+              <header class="card-head">
+                <div>
+                  <h2>Checks</h2>
+                  <p>FFmpeg capabilities and write access.</p>
+                </div>
+                <span class="pill" id="doctorSummary">—</span>
+              </header>
+              <ul class="check-list" id="checkList"></ul>
+              <div class="encoder-box">
+                <span class="field-label">Detected encoders</span>
+                <div class="encoder-badges" id="encoderBadges"></div>
+              </div>
+            </section>
+
+            <section class="card">
+              <header class="card-head">
+                <div>
+                  <h2>Install help</h2>
+                  <p>One command gets you going.</p>
+                </div>
+              </header>
+              <div class="card-body prose">
+                <p>FFBatch needs <strong>FFmpeg</strong> and <strong>FFprobe</strong> available on your PATH.</p>
+                <pre><code>winget install Gyan.FFmpeg</code></pre>
+                <p class="muted">Alternatively install with Chocolatey or Scoop, or point <code>ffmpegPath</code> at an existing binary in <code>ffbatch.json</code>.</p>
+                <button class="btn btn-secondary" id="copyDiagnostics" type="button">Copy diagnostics</button>
+              </div>
+            </section>
+          </div>
+        </section>
+      </main>
+
+      <footer class="footer">
+        <span>FFBatch · local FFmpeg batch studio</span>
+        <span class="footer-links">
+          <span id="footerConfig" class="ellipsis" title="Configuration file"></span>
+        </span>
+      </footer>
+    </div>
+  </div>
+
+  <!-- ============================= DIALOGS ============================= -->
+  <dialog id="browserDialog" aria-labelledby="browserTitle">
+    <div class="dialog-head">
+      <div>
+        <h2 id="browserTitle">Choose a folder</h2>
+        <p class="muted" id="browserSub">Pick a source or output folder.</p>
+      </div>
+      <button class="icon-btn" type="button" data-close aria-label="Close folder picker">
+        <svg class="icon" aria-hidden="true"><use href="#i-x"></use></svg>
+      </button>
+    </div>
+
+    <div class="browser-bar">
+      <button class="icon-btn" id="browserUp" type="button" aria-label="Go to parent folder">
+        <svg class="icon" aria-hidden="true"><use href="#i-up"></use></svg>
+      </button>
+      <input id="browserPath" type="text" spellcheck="false" aria-label="Folder path">
+      <button class="btn btn-secondary" id="browserGo" type="button">Go</button>
+    </div>
+
+    <div class="browser-body">
+      <aside class="browser-places" id="browserPlaces" aria-label="Places"></aside>
+      <div class="browser-list" id="browserList" aria-label="Folders"></div>
+    </div>
+
+    <div class="watch-dialog-options" id="watchDialogOptions" hidden>
+      <label class="check"><input type="checkbox" id="watchRecursive"> Include subfolders</label>
+      <label class="check"><input type="checkbox" id="watchExisting"> Convert files already there</label>
+    </div>
+
+    <div class="dialog-foot">
+      <span class="muted ellipsis" id="browserStatus"></span>
+      <div class="dialog-actions">
+        <button class="btn btn-ghost" type="button" data-close>Cancel</button>
+        <button class="btn btn-primary" id="browserUse" type="button">Use this folder</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="confirmDialog" aria-labelledby="confirmTitle">
+    <div class="dialog-head">
+      <div>
+        <h2 id="confirmTitle">Are you sure?</h2>
+        <p class="muted" id="confirmBody">This action cannot be undone.</p>
+      </div>
+    </div>
+    <div class="dialog-foot">
+      <span></span>
+      <div class="dialog-actions">
+        <button class="btn btn-ghost" type="button" id="confirmCancel">Keep going</button>
+        <button class="btn btn-danger" type="button" id="confirmOk">Confirm</button>
+      </div>
+    </div>
+  </dialog>
+
+  <div class="toasts" id="toasts" role="status" aria-live="polite" aria-atomic="false"></div>
+</body>
+</html>

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://github.com/Bilalmesk/ffmpeg-batch-convert#readme
+    about: Install, configuration, CLI, watch folders and troubleshooting.
+  - name: Security report
+    url: https://github.com/Bilalmesk/ffmpeg-batch-convert/security/policy
+    about: Please report vulnerabilities privately.

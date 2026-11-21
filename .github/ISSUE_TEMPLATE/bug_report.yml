@@ -1,0 +1,78 @@
+name: Bug report
+description: Something converted incorrectly, failed, or crashed.
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Please do not upload private media; a short `ffprobe` excerpt is enough.
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: Include the exact error and what you expected.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. ffbatch doctor
+        2. ffbatch convert "D:\TV" --recursive
+        3. ...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Where did it happen?
+      options:
+        - CLI
+        - Web dashboard
+        - Watch folders
+        - Both / not sure
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: FFBatch version
+      description: Output of `ffbatch version`
+    validations:
+      required: true
+
+  - type: input
+    id: ffmpeg
+    attributes:
+      label: FFmpeg version
+      description: First line of `ffmpeg -version`
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      placeholder: Windows 11 24H2 / macOS 15 / Ubuntu 24.04
+    validations:
+      required: true
+
+  - type: textarea
+    id: doctor
+    attributes:
+      label: Diagnostics
+      description: Paste `ffbatch doctor --json` (remove any private paths you do not want to share).
+      render: json
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: Job error, JSON/CSV report excerpt, or Watch activity line.
+      render: text

@@ -1,0 +1,21 @@
+# Binaries and build output
+/dist/
+/bin/
+*.exe
+*.test
+*.out
+
+# Personal configuration and run artifacts
+ffbatch.json
+ffbatch.log
+ffbatch-report-*.json
+ffbatch-report-*.csv
+*.ffbatch-*.part
+*.ffbatch-copy.part
+
+# Editors and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini

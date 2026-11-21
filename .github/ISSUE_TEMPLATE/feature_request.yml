@@ -1,0 +1,38 @@
+name: Feature request
+description: Suggest a workflow, flag, or dashboard improvement.
+title: "[feature] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve?
+      placeholder: I record long TS files and need ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: CLI flags, UI controls, config fields, or API shape you have in mind.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Current workarounds, other tools, or a manual FFmpeg command.
+
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Where should it live?
+      options:
+        - CLI
+        - Web dashboard
+        - Both
+        - Engine / API
+    validations:
+      required: true
