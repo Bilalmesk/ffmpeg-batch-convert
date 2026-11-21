@@ -330,8 +330,9 @@ Pull requests are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md), follow the
 described in [SECURITY.md](SECURITY.md).
 
 Every pull request runs CI on **Windows and Ubuntu**: `gofmt`, `go vet`,
-`go test ./...` and a full build. Pushing a `v*` tag triggers GoReleaser to build
-the Windows, macOS and Linux archives and publish the GitHub release.
+`go test ./...`, a full build, and an end-to-end FFmpeg smoke conversion on
+Ubuntu. Pushing a `v*` tag runs the same CI matrix before GoReleaser builds the
+Windows, macOS and Linux archives and publishes the GitHub release.
 
 ## License
 

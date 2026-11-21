@@ -35,6 +35,13 @@ func verbFor(mode config.Mode) string {
 	}
 }
 
+func countWord(n int, singular, plural string) string {
+	if n == 1 {
+		return singular
+	}
+	return plural
+}
+
 // humanDuration is kept as a thin alias so call sites read clearly.
 func humanDuration(d time.Duration) string { return units.Duration(d) }
 

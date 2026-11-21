@@ -272,10 +272,10 @@ func rendererExitCode(snapshot *engine.RunSnapshot) int {
 func printRunHeader(snapshot *engine.RunSnapshot, style term.Style) {
 	overwrite := snapshot.Config.Overwrite
 	mode := title(string(snapshot.Mode))
-	fmt.Printf("  %s %d file(s) · %s · %s\n",
-		style.Dim("plan  "), snapshot.Total, units.Bytes(snapshot.BytesIn), mode+" → "+strings.ToUpper(snapshot.Format))
-	fmt.Printf("  %s %d worker(s) · overwrite %s\n\n",
-		style.Dim("engine"), snapshot.Workers, overwrite)
+	fmt.Printf("  %s %d %s · %s · %s\n",
+		style.Dim("plan  "), snapshot.Total, countWord(snapshot.Total, "file", "files"), units.Bytes(snapshot.BytesIn), mode+" → "+strings.ToUpper(snapshot.Format))
+	fmt.Printf("  %s %d %s · overwrite %s\n\n",
+		style.Dim("engine"), snapshot.Workers, countWord(snapshot.Workers, "worker", "workers"), overwrite)
 }
 
 type renderer struct {
@@ -434,8 +434,8 @@ func (r *renderer) printSummary(snapshot *engine.RunSnapshot) {
 		fmt.Println()
 	}
 	if snapshot.DryRun {
-		fmt.Printf("  %s %d file(s) planned · %s · nothing was written (dry run)\n",
-			r.style.Cyan("◇"), snapshot.Planned, units.Bytes(snapshot.BytesIn))
+		fmt.Printf("  %s %d %s planned · %s · nothing was written (dry run)\n",
+			r.style.Cyan("◇"), snapshot.Planned, countWord(snapshot.Planned, "file", "files"), units.Bytes(snapshot.BytesIn))
 		if snapshot.Failed > 0 {
 			fmt.Printf("  %s %d could not be planned\n", r.style.Red("✗"), snapshot.Failed)
 		}
@@ -534,4 +534,11 @@ func title(value string) string {
 		return ""
 	}
 	return strings.ToUpper(value[:1]) + value[1:]
+}
+
+func countWord(n int, singular, plural string) string {
+	if n == 1 {
+		return singular
+	}
+	return plural
 }

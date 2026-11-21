@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-VERSION="${VERSION:-0.2.0}"
+VERSION="${VERSION:-0.2.1}"
 COMMIT="$(git rev-parse --short HEAD 2>/dev/null || echo none)"
 DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 PACKAGE="github.com/Bilalmesk/ffmpeg-batch-convert/internal/version"

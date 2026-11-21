@@ -157,9 +157,18 @@ func Run(ctx context.Context, tool ffmpeg.Tool, cfg config.Config, configPath, t
 		}
 	}
 
+	cpus := runtime.NumCPU()
+	workerWord := "workers"
+	if cfg.Workers == 1 {
+		workerWord = "worker"
+	}
+	cpuWord := "CPUs"
+	if cpus == 1 {
+		cpuWord = "CPU"
+	}
 	report.Checks = append(report.Checks, Check{
 		ID: "workers", Label: "Concurrency", Status: "pass",
-		Detail: fmt.Sprintf("%d worker(s) on %d logical CPU(s)", cfg.Workers, runtime.NumCPU()),
+		Detail: fmt.Sprintf("%d %s on %d logical %s", cfg.Workers, workerWord, cpus, cpuWord),
 	})
 	return report
 }

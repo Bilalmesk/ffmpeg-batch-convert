@@ -115,8 +115,9 @@ func (m *Manager) Start(ctx context.Context, cfg config.Config, paths []string) 
 	for _, warning := range warnings {
 		m.log(run, "warn", warning)
 	}
-	m.log(run, "info", fmt.Sprintf("%s batch started: %d file(s), %d worker(s), %s → %s",
-		titleCase(string(cfg.Mode)), len(jobs), cfg.Workers, upperOr(cfg.Format, "MP4"), verbFor(cfg.Mode)))
+	m.log(run, "info", fmt.Sprintf("%s batch started: %d %s, %d %s, %s → %s",
+		titleCase(string(cfg.Mode)), len(jobs), countWord(len(jobs), "file", "files"),
+		cfg.Workers, countWord(cfg.Workers, "worker", "workers"), upperOr(cfg.Format, "MP4"), verbFor(cfg.Mode)))
 
 	m.runWG.Add(1)
 	go func() {
@@ -138,6 +139,12 @@ func (m *Manager) execute(ctx context.Context, run *Run) {
 		now := time.Now()
 		run.FinishedAt = &now
 		run.Canceling = false
+		// Clear the active slot before emitting the final log/event so a client
+		// that sees the terminal run can immediately start or retry.
+		if m.active == run {
+			m.active = nil
+			m.cancel = nil
+		}
 		m.mu.Unlock()
 
 		summary := m.summaryOf(run)
@@ -149,10 +156,6 @@ func (m *Manager) execute(ctx context.Context, run *Run) {
 		}
 
 		m.mu.Lock()
-		if m.active == run {
-			m.active = nil
-			m.cancel = nil
-		}
 		final := run.snapshot()
 		run.closeLog()
 		m.mu.Unlock()
