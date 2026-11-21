@@ -74,3 +74,6 @@ jobs:
           "$work/ffbatch" convert "$work/in.ts" --output "$work/out" --quiet
           ffprobe -v error -select_streams v:0 -show_entries stream=codec_type -of csv=p=0 "$work/out/in.mp4" | grep -qx video
           ffprobe -v error -select_streams a:0 -show_entries stream=codec_type -of csv=p=0 "$work/out/in.mp4" | grep -qx audio
+          mkdir -p "$work/gobin"
+          GOBIN="$work/gobin" go install ./cmd/ffbatch
+          "$work/gobin/ffbatch" version | grep -q "^ffbatch "

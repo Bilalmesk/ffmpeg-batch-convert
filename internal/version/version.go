@@ -9,7 +9,7 @@ import (
 
 // These values are overridden by -ldflags in release builds.
 var (
-	Version = "0.2.1-dev"
+	Version = "0.2.2"
 	Commit  = "none"
 	Date    = "unknown"
 )

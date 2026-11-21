@@ -65,8 +65,11 @@ make build          # dist/ffbatch
 ### go install
 
 ```bash
-go install github.com/Bilalmesk/ffmpeg-batch-convert@latest
+go install github.com/Bilalmesk/ffmpeg-batch-convert/cmd/ffbatch@latest
 ```
+
+This installs a binary named `ffbatch` (the release archives and build scripts
+use the same name).
 
 ### First run
 
@@ -275,7 +278,8 @@ The original scripts live in [`legacy/`](legacy/) with a mapping table. The shor
 ## Development
 
 ```
-main.go        process entry point
+main.go        release/build entry point
+cmd/ffbatch/   go-install entry point (thin wrapper over internal/cli)
 internal/
   cli/        commands, flag parsing, rich terminal output
   config/     defaults, validation, JSON load/save, recipes

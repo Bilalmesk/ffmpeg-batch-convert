@@ -4,6 +4,16 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [0.2.2] - 2026-11-21
+
+### Fixed
+
+- `go install` now uses the `cmd/ffbatch` entry point, so it installs a binary
+  named `ffbatch` (not `ffmpeg-batch-convert`) and reports the release version.
+  CI verifies the install and version.
+- README install instructions point at `.../cmd/ffbatch@latest`; the development
+  tree and architecture docs include the new entry point.
+
 ## [0.2.1] - 2026-11-21
 
 ### Fixed
