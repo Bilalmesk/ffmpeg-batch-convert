@@ -4,6 +4,32 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [0.2.1] - 2026-11-21
+
+### Fixed
+
+- A finished run is now removed from the active slot before its final log
+  entry and `run.finished` event. Previously a client that saw a terminal run
+  could get a false `409` when immediately starting another batch or retrying.
+- Added a regression test that asserts the manager reports no active run while
+  emitting the "Run finished" log line.
+- Removed stray UTF-8 BOMs from the Makefile, shell/PowerShell build scripts and
+  embedded web assets; `scripts/build.sh` now has an executable bit and LF line
+  endings.
+- Improved dark/light contrast to pass WCAG AA checks, fixed navigation
+  accessible names when badge counts are visible, and made the watched-folder
+  list semantically valid. Axe is clean on the populated dashboard in both
+  themes.
+
+### Changed
+
+- CI now runs an end-to-end FFmpeg smoke conversion on Ubuntu in addition to
+  formatting, vet, unit/HTTP tests and builds on Windows and Ubuntu.
+- The release workflow calls the CI workflow first, so a tagged release cannot
+  be published unless the full matrix and FFmpeg smoke test pass.
+- Singular/plural labels ("1 file", "1 worker") in the dashboard, watcher
+  activity and CLI summaries.
+
 ## [0.2.0] - 2026-11-21
 
 ### Added

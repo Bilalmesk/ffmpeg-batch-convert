@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8">
@@ -105,12 +105,12 @@
         <button class="nav-item" data-view="watch" aria-label="Watch" title="Watch">
           <svg class="icon" aria-hidden="true"><use href="#i-eye"></use></svg>
           <span>Watch</span>
-          <span class="nav-badge" id="navWatchCount" hidden>0</span>
+          <span class="nav-badge" id="navWatchCount" aria-hidden="true" hidden>0</span>
         </button>
         <button class="nav-item" data-view="runs" aria-label="Runs" title="Runs">
           <svg class="icon" aria-hidden="true"><use href="#i-list"></use></svg>
           <span>Runs</span>
-          <span class="nav-badge" id="navRunCount" hidden>0</span>
+          <span class="nav-badge" id="navRunCount" aria-hidden="true" hidden>0</span>
         </button>
         <button class="nav-item" data-view="doctor" aria-label="Doctor" title="Doctor">
           <svg class="icon" aria-hidden="true"><use href="#i-pulse"></use></svg>
@@ -205,7 +205,7 @@
 
                   <div class="scan-summary" id="scanSummary" hidden>
                     <div class="scan-stats">
-                      <span><strong id="scanCount">0</strong> files selected</span>
+                      <span><strong id="scanCount">0</strong> <span id="scanCountLabel">files selected</span></span>
                       <span><strong id="scanSize">0 B</strong></span>
                       <span class="muted ellipsis" id="scanRootLabel"></span>
                     </div>
@@ -479,7 +479,7 @@
                   </div>
                   <button class="btn btn-secondary" id="addWatchBtn" type="button">Add folder</button>
                 </header>
-                <div class="watch-list" id="watchList"></div>
+                <ul class="watch-list" id="watchList"></ul>
                 <div class="empty-state" id="watchEmpty">
                   <div class="empty-icon" aria-hidden="true">
                     <svg class="icon"><use href="#i-eye"></use></svg>

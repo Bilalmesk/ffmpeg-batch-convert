@@ -89,7 +89,7 @@ func cmdScan(args []string, style term.Style) int {
 		total += candidate.SizeBytes
 	}
 	fmt.Printf("%s\n", style.Bold(root))
-	fmt.Printf("%d file(s) · %s · extensions: %s\n\n", len(candidates), units.Bytes(total), joinExtensions(extensionsForScan))
+	fmt.Printf("%d %s · %s · extensions: %s\n\n", len(candidates), countWord(len(candidates), "file", "files"), units.Bytes(total), joinExtensions(extensionsForScan))
 	if len(candidates) == 0 {
 		return 0
 	}

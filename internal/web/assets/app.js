@@ -1,4 +1,4 @@
-﻿/* FFBatch dashboard — vanilla JS, no build step. */
+/* FFBatch dashboard — vanilla JS, no build step. */
 (() => {
   "use strict";
 
@@ -21,6 +21,11 @@
       index += 1;
     }
     return `${value.toFixed(value >= 100 ? 0 : 1)} ${units[index]}`;
+  }
+
+  function filesText(count) {
+    const n = Number(count) || 0;
+    return `${numberFormat.format(n)} file${n === 1 ? "" : "s"}`;
   }
 
   function fmtClock(ms) {
@@ -731,7 +736,7 @@
       if (data.count === 0) {
         toast("warn", "No matching files", `Nothing matched the configured extensions in ${data.root}`);
       } else {
-        toast("ok", `${numberFormat.format(data.count)} file(s) found`, `${fmtBytes(data.totalBytes)} · ${data.recursive ? "including subfolders" : "this folder only"}`);
+        toast("ok", `${filesText(data.count)} found`, `${fmtBytes(data.totalBytes)} · ${data.recursive ? "including subfolders" : "this folder only"}`);
       }
     } catch (error) {
       toast("bad", "Scan failed", error.message);
@@ -750,8 +755,9 @@
   function refreshScanCounts() {
     if (!state.scan) return;
     const { files, selectedFiles, selectedBytes } = scanSelection();
-    $("#sourcePill").textContent = `${numberFormat.format(selectedFiles.length)} / ${numberFormat.format(files.length)} files`;
+    $("#sourcePill").textContent = `${numberFormat.format(selectedFiles.length)} / ${numberFormat.format(files.length)} ${files.length === 1 ? "file" : "files"}`;
     $("#scanCount").textContent = numberFormat.format(selectedFiles.length);
+    $("#scanCountLabel").textContent = selectedFiles.length === 1 ? "file selected" : "files selected";
     $("#scanSize").textContent = fmtBytes(selectedBytes);
     updateStartState();
   }
@@ -781,8 +787,9 @@
     empty.hidden = files.length > 0;
     wrap.hidden = files.length === 0;
     pill.hidden = false;
-    pill.textContent = `${numberFormat.format(selectedFiles.length)} / ${numberFormat.format(files.length)} files`;
+    pill.textContent = `${numberFormat.format(selectedFiles.length)} / ${numberFormat.format(files.length)} ${files.length === 1 ? "file" : "files"}`;
     $("#scanCount").textContent = numberFormat.format(selectedFiles.length);
+    $("#scanCountLabel").textContent = selectedFiles.length === 1 ? "file selected" : "files selected";
     $("#scanSize").textContent = fmtBytes(selectedBytes);
     $("#scanRootLabel").textContent = state.scan.root || "";
     $("#scanRootLabel").title = state.scan.root || "";
@@ -894,12 +901,13 @@
     if (state.scan) {
       const files = state.scan.files.filter((file) => state.selected.has(file.path));
       const bytes = files.reduce((total, file) => total + (file.sizeBytes || 0), 0);
-      summary.textContent = `${numberFormat.format(files.length)} of ${numberFormat.format(state.scan.files.length)} files · ${fmtBytes(bytes)}`;
+      summary.textContent = `${numberFormat.format(files.length)} of ${filesText(state.scan.files.length)} · ${fmtBytes(bytes)}`;
     } else {
       const source = $("#sourcePath").value.trim();
       summary.textContent = source ? source.split(/[\\/]/).filter(Boolean).pop() || source : "Choose a folder to begin";
     }
-    estimate.textContent = `${modeLabel(state.config.mode)} → ${String(state.config.format || "").toUpperCase()} · ${state.config.workers || 1} worker(s)`;
+    const workers = state.config.workers || 1;
+    estimate.textContent = `${modeLabel(state.config.mode)} → ${String(state.config.format || "").toUpperCase()} · ${workers} ${workers === 1 ? "worker" : "workers"}`;
   }
 
   function updateStartState() {
@@ -1007,7 +1015,7 @@
       renderRunList();
       selectRun(snapshot.id);
       switchView("runs");
-      toast("ok", "Batch started", `${numberFormat.format(snapshot.total)} file(s) · ${modeLabel(snapshot.mode)} → ${String(snapshot.format).toUpperCase()}`);
+      toast("ok", "Batch started", `${filesText(snapshot.total)} · ${modeLabel(snapshot.mode)} → ${String(snapshot.format).toUpperCase()}`);
       // Reconcile with the server after a beat: a tiny batch may finish before
       // the POST response is processed, and SSE events are authoritative.
       window.setTimeout(() => refreshRuns({ select: false }), 800);
@@ -1032,9 +1040,18 @@
     if (index >= 0) state.runs[index] = { ...state.runs[index], ...summary };
     else state.runs.unshift({ ...summary });
     state.runs.sort((a, b) => new Date(b.startedAt || 0) - new Date(a.startedAt || 0));
-    const badge = $("#navRunCount");
-    badge.textContent = String(state.runs.length);
-    badge.hidden = state.runs.length === 0;
+    updateNavBadge("runs", state.runs.length);
+  }
+
+  function updateNavBadge(view, count) {
+    const badge = view === "runs" ? $("#navRunCount") : $("#navWatchCount");
+    badge.textContent = String(count);
+    badge.hidden = count === 0;
+    const button = document.querySelector(`.nav-item[data-view="${view}"]`);
+    if (button) {
+      const label = view === "runs" ? "Runs" : "Watch";
+      button.setAttribute("aria-label", count > 0 ? `${label} ${count}` : label);
+    }
   }
 
   async function refreshRuns({ select = true } = {}) {
@@ -1045,9 +1062,7 @@
       // A response that was generated before a run finished must not resurrect it.
       if (active && active.id === state.lastFinishedRunID) active = null;
       state.activeRun = active;
-      const badge = $("#navRunCount");
-      badge.textContent = String(state.runs.length);
-      badge.hidden = state.runs.length === 0;
+      updateNavBadge("runs", state.runs.length);
       $("#runsEmpty").hidden = state.runs.length > 0;
       renderRunList();
       if (select && !state.currentRunID && state.runs.length > 0) {
@@ -1086,7 +1101,7 @@
     title.textContent = `${modeLabel(run.mode)} → ${String(run.format || "").toUpperCase()}`;
     const meta = document.createElement("span");
     meta.className = "run-item-meta";
-    meta.textContent = `${numberFormat.format(run.total || 0)} files · ${fmtRelative(run.startedAt)}`;
+    meta.textContent = `${filesText(run.total || 0)} · ${fmtRelative(run.startedAt)}`;
     text.append(title, meta);
 
     const percent = document.createElement("span");
@@ -1140,7 +1155,7 @@
     $("#runEyebrow").textContent = `${snapshot.id} · ${statusLabel(snapshot.status)}`;
     $("#runTitle").textContent = `${modeLabel(snapshot.mode)} → ${String(snapshot.format || "").toUpperCase()}`;
     const root = snapshot.root || (snapshot.config && snapshot.config.outputDir) || "";
-    $("#runMeta").textContent = `${numberFormat.format(snapshot.total || 0)} files · ${fmtBytes(snapshot.bytesIn || 0)} · ${root}`;
+    $("#runMeta").textContent = `${filesText(snapshot.total || 0)} · ${fmtBytes(snapshot.bytesIn || 0)} · ${root}`;
     $("#runMeta").title = root;
 
     renderSummaryUI(snapshot);
@@ -1652,7 +1667,7 @@
       upsertRunSummary(next);
       renderRunList();
       selectRun(next.id);
-      toast("ok", "Retrying failed jobs", `${numberFormat.format(next.total)} file(s)`);
+      toast("ok", "Retrying failed jobs", filesText(next.total));
     } catch (error) {
       toast("bad", "Could not retry", error.message);
     } finally {
@@ -1711,9 +1726,7 @@
 
     renderWatchEvents(data.events || []);
     $("#watchTiming").textContent = `Scans every ${data.intervalSeconds || 5}s · waits ${data.settleSeconds || 0}s for files to settle.`;
-    const badge = $("#navWatchCount");
-    badge.textContent = String(targets.length);
-    badge.hidden = targets.length === 0;
+    updateNavBadge("watch", targets.length);
   }
 
   function watchRow(target) {
@@ -1911,7 +1924,8 @@
       const data = await api(`/api/fs?path=${encodeURIComponent(path || "")}`);
       state.browser.path = data.path;
       $("#browserPath").value = data.path;
-      $("#browserStatus").textContent = `${numberFormat.format(data.entries.length)} folder(s)`;
+      const folders = data.entries.length;
+      $("#browserStatus").textContent = `${numberFormat.format(folders)} ${folders === 1 ? "folder" : "folders"}`;
       $("#browserUp").disabled = !data.parent;
       $("#browserUp").dataset.parent = data.parent || "";
       renderPlaces([...(data.roots || []), ...(data.places || [])], data.path);

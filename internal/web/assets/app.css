@@ -1,4 +1,4 @@
-﻿/* ============================================================
+/* ============================================================
    FFBatch — design tokens
    ============================================================ */
 :root {
@@ -19,10 +19,11 @@
   --text: #eef1f8;
   --text-soft: #c5cada;
   --muted: #949db4;
-  --faint: #6a7288;
+  --faint: #8b94a9;
 
   --accent: #8b5cf6;
   --accent-2: #22d3ee;
+  --accent-text: #a78bfa;
   --accent-soft: rgba(139, 92, 246, .16);
   --accent-line: rgba(139, 92, 246, .45);
   --gradient: linear-gradient(135deg, #8b5cf6 0%, #6366f1 52%, #22d3ee 100%);
@@ -65,20 +66,21 @@
   --text: #121521;
   --text-soft: #30364a;
   --muted: #5f6880;
-  --faint: #8b93a8;
+  --faint: #626b7f;
 
   --accent: #6d3ff2;
-  --accent-2: #0891b2;
+  --accent-2: #0e7490;
+  --accent-text: #6d3ff2;
   --accent-soft: rgba(109, 63, 242, .10);
   --accent-line: rgba(109, 63, 242, .38);
   --gradient: linear-gradient(135deg, #6d3ff2 0%, #4f46e5 52%, #0891b2 100%);
 
-  --ok: #059669;
-  --ok-soft: rgba(5, 150, 105, .10);
+  --ok: #047857;
+  --ok-soft: rgba(4, 120, 87, .10);
   --warn: #b45309;
   --warn-soft: rgba(180, 83, 9, .10);
-  --bad: #e11d48;
-  --bad-soft: rgba(225, 29, 72, .09);
+  --bad: #be123c;
+  --bad-soft: rgba(190, 18, 60, .09);
   --info: #2563eb;
   --info-soft: rgba(37, 99, 235, .09);
   --planned: #7c3aed;
@@ -945,7 +947,7 @@ output {
   color: var(--text);
   box-shadow: 0 4px 12px -8px rgba(0, 0, 0, .7);
 }
-.segmented button.is-active strong { color: var(--accent); }
+.segmented button.is-active strong { color: var(--accent-text); }
 .segmented button.is-active small { color: var(--muted); }
 
 .option-group { margin-top: 16px; }
@@ -1116,7 +1118,7 @@ progress.tiny { height: 5px; }
 
 .watch-main { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 
-.watch-list { display: flex; flex-direction: column; padding: 8px 10px; }
+.watch-list { display: flex; flex-direction: column; margin: 0; padding: 8px 10px; list-style: none; }
 
 .watch-item {
   display: grid;

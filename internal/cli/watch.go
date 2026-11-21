@@ -127,7 +127,7 @@ func cmdWatch(args []string, style term.Style) int {
 	_ = manager.Shutdown(shutdownCtx)
 
 	if !opts.json && !opts.quiet {
-		fmt.Printf("\n%s stopped watching %d folder(s)\n", style.Green("✓"), added)
+		fmt.Printf("\n%s stopped watching %d %s\n", style.Green("✓"), added, countWord(added, "folder", "folders"))
 	}
 	return 0
 }

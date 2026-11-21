@@ -27,6 +27,12 @@ Watch-folder changes should include watcher tests (`internal/watch`) and a
 manual check that files are picked up, queued while busy, and ignored when they
 are still growing.
 
+## Continuous integration
+
+Every pull request runs formatting, `go vet`, the unit/HTTP suite, a full build on
+Windows and Ubuntu, and an end-to-end FFmpeg conversion smoke test on Ubuntu.
+Release tags run the same CI matrix before GoReleaser publishes archives.
+
 ## Pull requests
 
 1. Fork and branch from `main`.

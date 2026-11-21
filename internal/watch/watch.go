@@ -332,7 +332,7 @@ func (w *Watcher) tick(ctx context.Context) {
 		}
 		w.mu.Lock()
 		event := w.pushEventLocked("info", batch.TargetID,
-			fmt.Sprintf("Starting a batch of %d file(s) in %s", len(batch.Files), batch.Dir))
+			fmt.Sprintf("Starting a batch of %d %s in %s", len(batch.Files), countWord(len(batch.Files), "file", "files"), batch.Dir))
 		w.mu.Unlock()
 		w.announce(event)
 
@@ -416,7 +416,7 @@ func (w *Watcher) collectAll(now time.Time, cfg config.Config, allowLaunch bool)
 			t.LastStartAt = &startAt
 			batches = append(batches, Batch{TargetID: t.ID, Dir: t.Dir, Files: ready})
 			events = append(events, w.pushEventLocked("info", t.ID,
-				fmt.Sprintf("%d new file(s) ready in %s", len(ready), t.Dir)))
+				fmt.Sprintf("%d new %s ready in %s", len(ready), countWord(len(ready), "file", "files"), t.Dir)))
 			collectedBatch = true
 		}
 		t.Pending = pendingCount(t)
@@ -467,6 +467,13 @@ func (w *Watcher) targetSnapshotLocked(t *watchedFolder) Target {
 	snapshot.Tracked = len(t.files)
 	snapshot.Pending = pendingCount(t)
 	return snapshot
+}
+
+func countWord(n int, singular, plural string) string {
+	if n == 1 {
+		return singular
+	}
+	return plural
 }
 
 func pendingCount(t *watchedFolder) int {
