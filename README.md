@@ -323,6 +323,16 @@ Tag a commit (`v0.2.0`) and push it. GitHub Actions runs tests and GoReleaser bu
 | Arabic or other Unicode names | The app is UTF-8 end-to-end. Use Windows Terminal for the best console rendering. |
 | Encoder missing | Use a full FFmpeg build (gyan.dev or BtbN). Hardware encoders are not required. |
 
+## Contributing
+
+Pull requests are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md), follow the
+[Code of Conduct](CODE_OF_CONDUCT.md), and report security issues privately as
+described in [SECURITY.md](SECURITY.md).
+
+Every pull request runs CI on **Windows and Ubuntu**: `gofmt`, `go vet`,
+`go test ./...` and a full build. Pushing a `v*` tag triggers GoReleaser to build
+the Windows, macOS and Linux archives and publish the GitHub release.
+
 ## License
 
 MIT © 2026 Bilal — see [LICENSE](LICENSE).
