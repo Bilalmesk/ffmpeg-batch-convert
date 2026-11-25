@@ -54,6 +54,8 @@ func Run(args []string) int {
 		return cmdServe(rest, style)
 	case "doctor", "check":
 		return cmdDoctor(rest, style)
+	case "verify":
+		return cmdVerify(rest, style)
 	case "config":
 		return cmdConfig(rest, style)
 	case "version", "--version", "-version":
@@ -185,6 +187,8 @@ func printCommandHelp(command string, style term.Style) int {
 		fmt.Print(serveUsage)
 	case "doctor", "check":
 		fmt.Print(doctorUsage)
+	case "verify":
+		fmt.Print(verifyUsage)
 	case "config":
 		fmt.Print(configUsage)
 	case "version":

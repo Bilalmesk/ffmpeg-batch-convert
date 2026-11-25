@@ -63,6 +63,12 @@ type Job struct {
 	Command  string   `json:"command,omitempty"`
 	Warnings []string `json:"warnings,omitempty"`
 
+	Verified         bool   `json:"verified,omitempty"`
+	Verification     string `json:"verification,omitempty"`
+	SourceSHA256     string `json:"sourceSha256,omitempty"`
+	OutputSHA256     string `json:"outputSha256,omitempty"`
+	SourceArchivedTo string `json:"sourceArchivedTo,omitempty"`
+
 	Error         string `json:"error,omitempty"`
 	Reason        string `json:"reason,omitempty"`
 	OutputBytes   int64  `json:"outputBytes,omitempty"`
@@ -139,6 +145,7 @@ type RunSummary struct {
 	Percent  float64 `json:"percent"`
 	BytesIn  int64   `json:"bytesIn"`
 	BytesOut int64   `json:"bytesOut"`
+	Verified int     `json:"verified"`
 
 	StartedAt  time.Time  `json:"startedAt"`
 	FinishedAt *time.Time `json:"finishedAt,omitempty"`
@@ -184,6 +191,9 @@ func summarize(run *Run) RunSummary {
 	weighted := 0.0
 	for _, job := range run.Jobs {
 		summary.BytesIn += job.SizeBytes
+		if job.Verified {
+			summary.Verified++
+		}
 		switch job.Status {
 		case StatusPending:
 			summary.Pending++

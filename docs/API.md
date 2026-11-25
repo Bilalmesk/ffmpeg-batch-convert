@@ -5,14 +5,22 @@ served from the same origin as the UI (default `http://127.0.0.1:8737`).
 
 ## Security rules
 
-- The server binds to loopback by default.
-- `POST`/`PUT` requests **must** send `Content-Type: application/json`.
+- The server binds to loopback by default. Binding to a non-loopback address
+  requires `--token` / `FFBATCH_TOKEN` (16+ characters) unless `--insecure` is
+  passed explicitly.
+- With a token configured, every route requires it. The browser flow is
+  `GET /?token=SECRET`: the server sets an HttpOnly, SameSite=Strict cookie and
+  redirects to `/`. Non-browser clients may send `Authorization: Bearer SECRET`
+  or `X-FFBatch-Token: SECRET`.
+- `POST`/`PUT`/`PATCH`/`DELETE` requests **must** send
+  `Content-Type: application/json`.
 - If an `Origin` header is present it must match the request host.
 - Request bodies are limited to 1 MiB.
 - Unknown JSON fields are rejected.
 - Responses set `Content-Security-Policy`, `X-Frame-Options: DENY`,
   `X-Content-Type-Options: nosniff` and `Referrer-Policy: no-referrer`.
-- Errors use `{"error":"message"}` with a meaningful HTTP status.
+- Errors use `{"error":"message"}` with a meaningful HTTP status. A missing or
+  wrong token returns `401`.
 
 ## Status and configuration
 
@@ -20,7 +28,7 @@ served from the same origin as the UI (default `http://127.0.0.1:8737`).
 
 ```json
 {
-  "version": "0.1.0",
+  "version": "0.3.0",
   "commit": "abc1234",
   "platform": "windows/amd64",
   "go": "go1.24.0",
@@ -44,8 +52,10 @@ served from the same origin as the UI (default `http://127.0.0.1:8737`).
 
 ### `GET /api/config`
 
-Returns `{config, configPath, recipes, formats, presets}`. New fields include
-`audioTracks` (`all|first|preferred`), `audioLanguage`, `trimStart` and
+Returns `{config, configPath, recipes, formats, presets}`. Security and
+chain-of-custody fields include `archiveDir` (mutually exclusive with
+`deleteSource`), `verifyOutput` (default `true`) and `hashFiles`. Audio fields
+include `audioTracks` (`all|first|preferred`), `audioLanguage`, `trimStart` and
 `trimEnd`.
 
 ### `PUT /api/config`
@@ -155,6 +165,7 @@ Returns a full `RunSnapshot`:
   "percent": 55.5,
   "bytesIn": 123,
   "bytesOut": 100,
+  "verified": 1,
   "startedAt": "...",
   "finishedAt": null,
   "config": { },
@@ -166,8 +177,9 @@ Returns a full `RunSnapshot`:
 Job fields include `id`, `name`, `input`, `output`, `status`, `stage`,
 `progress`, `speed`, `fps`, `bitrate`, `etaSeconds`, `outTimeMs`,
 `durationMs`, `resolution`, `videoCodec`, `audioCodec`, `command`, `warnings`,
-`error`, `reason`, `outputBytes`, `sourceRemoved`, `startedAt` and
-`finishedAt`.
+`error`, `reason`, `outputBytes`, `sourceRemoved`, `verified`, `verification`
+(`passed|failed|skipped`), `sourceSha256`, `outputSha256`,
+`sourceArchivedTo`, `startedAt` and `finishedAt`.
 
 ### `POST /api/runs/{id}/cancel`
 
@@ -187,8 +199,11 @@ the original configuration. Successful and skipped jobs are not repeated.
 
 ### `GET /api/runs/{id}/report?format=json|csv`
 
-Downloads the run. JSON includes the config and all jobs. CSV has one row per
-job with size, duration, codecs, timestamps, errors, reasons and warnings.
+Downloads the run. JSON includes the schema number, generator version, config and
+all jobs, including verification status and SHA-256 hashes. This document is also
+the input for `ffbatch verify --manifest`, which re-hashes outputs and sources
+(including archived copies). CSV has one row per job with size, duration,
+codecs, timestamps, errors, reasons, warnings, verification and hashes.
 
 ## Live events
 
@@ -230,8 +245,8 @@ resynchronise.
 Watched folders are held in server memory and polled on an interval. A file is
 queued after its size and modification time have been stable for the settle
 window (default 10 s). Only one batch runs at a time; ready files stay queued
-while the engine is busy. Output folders and files whose extension matches the
-target format are ignored.
+while the engine is busy. Output folders, archive folders, and files whose
+extension matches the target format are ignored.
 
 ### `GET /api/watch`
 
@@ -300,7 +315,7 @@ Runs the same checks as `ffbatch doctor`:
 ```json
 {
   "generatedAt": "...",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "platform": "windows/amd64",
   "goVersion": "go1.24.0",
   "cpus": 8,
@@ -319,3 +334,5 @@ Runs the same checks as `ffbatch doctor`:
 `GET /` serves the embedded `index.html`; `/app.css`, `/app.js` and
 `/favicon.svg` are served from the same embedded bundle. The UI uses hash
 routing (`#/convert`, `#/runs`, `#/doctor`), so no server rewrite is needed.
+When a dashboard token is configured, these routes require the same cookie or
+bearer token as the API.

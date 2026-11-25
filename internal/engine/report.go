@@ -8,13 +8,20 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/Bilalmesk/ffmpeg-batch-convert/internal/version"
 )
 
 // ReportDoc is the JSON export of a finished (or in-flight) run.
 type ReportDoc struct {
+	Schema      int          `json:"schema"`
+	Tool        string       `json:"tool"`
 	GeneratedAt time.Time    `json:"generatedAt"`
 	Run         *RunSnapshot `json:"run"`
 }
+
+// ReportSchema is bumped when the manifest layout changes incompatibly.
+const ReportSchema = 1
 
 // Report renders a run as JSON or CSV and returns the suggested filename.
 func (m *Manager) Report(id, format string) ([]byte, string, error) {
@@ -27,7 +34,12 @@ func (m *Manager) Report(id, format string) ([]byte, string, error) {
 		data, err := runCSV(snapshot)
 		return data, fmt.Sprintf("ffbatch-%s.csv", id), err
 	case "json", "":
-		data, err := json.MarshalIndent(ReportDoc{GeneratedAt: time.Now(), Run: snapshot}, "", "  ")
+		data, err := json.MarshalIndent(ReportDoc{
+			Schema:      ReportSchema,
+			Tool:        "ffbatch " + version.Short(),
+			GeneratedAt: time.Now(),
+			Run:         snapshot,
+		}, "", "  ")
 		if err != nil {
 			return nil, "", err
 		}
@@ -45,7 +57,8 @@ func runCSV(snapshot *RunSnapshot) ([]byte, error) {
 	header := []string{
 		"id", "status", "name", "input", "output", "size_bytes", "output_bytes",
 		"duration_ms", "resolution", "video_codec", "audio_codec", "started_at",
-		"finished_at", "error", "reason", "warnings",
+		"finished_at", "error", "reason", "warnings", "verified", "verification",
+		"source_sha256", "output_sha256", "source_archived_to",
 	}
 	if err := writer.Write(header); err != nil {
 		return nil, err
@@ -68,6 +81,11 @@ func runCSV(snapshot *RunSnapshot) ([]byte, error) {
 			job.Error,
 			job.Reason,
 			strings.Join(job.Warnings, " | "),
+			strconv.FormatBool(job.Verified),
+			job.Verification,
+			job.SourceSHA256,
+			job.OutputSHA256,
+			job.SourceArchivedTo,
 		}
 		if err := writer.Write(row); err != nil {
 			return nil, err

@@ -14,7 +14,9 @@ cmd/ffbatch/main.go      go-install entry point
              ├── config
              ├── doctor
              ├── engine
+             │    ├── disk
              │    ├── ffmpeg
+             │    ├── hashutil
              │    ├── mediainfo
              │    └── units
              ├── watch
@@ -25,6 +27,7 @@ cmd/ffbatch/main.go      go-install entry point
              │    ├── watch
              │    └── config
              ├── ffmpeg
+             ├── hashutil
              ├── term
              └── version
 ```
@@ -44,11 +47,14 @@ Start(ctx, cfg, paths)
   └─ go execute(runCtx, run)
         ├─ N worker goroutines read from jobsCh
         │    ├─ probe with ffprobe
+        │    ├─ hash the source (when requested or required)
         │    ├─ build argv
         │    ├─ write to a .part temp file
         │    ├─ parse -progress pipe:1
+        │    ├─ verify the temp output (codec/resolution/duration/audio)
+        │    ├─ hash the output
         │    ├─ commit with rename
-        │    └─ optionally delete the source
+        │    └─ optionally archive or delete the source
         └─ producer feeds pending jobs, handles cancellation
 ```
 
@@ -89,11 +95,11 @@ new → settling(size/mtime stable for N seconds) → launched → (unchanged) i
 ```
 
 Only one batch is returned per tick, so multiple watched folders cannot race
-into `ErrBusy`; the others remain pending. Files under the configured output
-folder and files already in the target container are excluded. Overlapping
-folders are rejected at add time. A failed launch backs the target off before
-retrying. Watched folders and their state live in memory for the life of the
-process.
+into `ErrBusy`; the others remain pending. Files under the configured output or
+archive folder and files already in the target container are excluded.
+Overlapping folders are rejected at add time. A failed launch backs the target
+off before retrying. Watched folders and their state live in memory for the life
+of the process.
 
 ## Trim and audio selection
 
@@ -142,13 +148,39 @@ FFmpeg writes to a hidden temporary file in the destination folder:
 
 The extension is preserved so FFmpeg can infer the muxer. On success:
 
-1. If the destination appeared during the run, apply the overwrite policy again.
-2. `replaceFile` renames over the destination (removing it first on Windows,
+1. If verification is enabled (the default), `ffprobe` the temp file and compare
+   it with the source and the plan: video codec, resolution, duration within a
+   bounded tolerance, and the expected audio-track count. A failure deletes the
+   temp file and fails the job.
+2. When hashing is enabled (or forced by archive/delete), stream SHA-256 over the
+   source before conversion and over the temp output after verification.
+3. If the destination appeared during the run, apply the overwrite policy again.
+4. `replaceFile` renames over the destination (removing it first on Windows,
    where `os.Rename` refuses to replace).
-3. The output size is recorded, then the source is deleted only if requested.
+5. The output size is recorded, then the source is archived or deleted only if
+   requested and only after its size/mtime are re-checked.
 
 On failure or cancellation the temporary file is removed. Cross-device renames
-(in rename mode) fall back to copy + fsync + replace + delete.
+(in rename mode) fall back to copy + fsync + replace + size check + delete.
+
+## Trusted pipeline
+
+The verification, hashing and archive logic lives in `engine/verify.go` and
+`engine/safety.go`:
+
+- `verificationRequired` is true for the default `verifyOutput`, and is forced
+  when a source will be archived or deleted. `hashingRequired` is forced for the
+  same destructive operations.
+- `ensureOutputSpace` asks `internal/disk` for the free bytes on the destination
+  volume and compares them with a conservative estimate (source size plus
+  headroom, more for encode).
+- `archiveSource` preserves the path relative to the run root, refuses to
+  overwrite the source, creates the destination tree, and delegates to the
+  crash-safe `moveFile`.
+- Reports contain a schema number and generator version, plus `verified`,
+  `verification`, `sourceSha256`, `outputSha256` and `sourceArchivedTo`.
+  `ffbatch verify --manifest` reads the same JSON and checks size, output hash
+  and the source hash at the original or archived path.
 
 ## Overwrite planning
 
@@ -177,6 +209,10 @@ own config; it is validated, used for that run, and optionally persisted.
 - `http.ServeMux` with Go 1.22 method/wildcard patterns.
 - Middleware enforces JSON content type and same-origin for mutations, and sets
   CSP, `X-Frame-Options`, `X-Content-Type-Options` and `Referrer-Policy`.
+- Optional bearer authentication wraps the whole router. The `?token=` flow sets
+  a hashed-comparison, HttpOnly, SameSite=Strict cookie and redirects to the
+  dashboard root. A non-loopback bind is rejected by the CLI unless a token or
+  `--insecure` is present.
 - SSE uses a subscriber channel per client, a 15-second keepalive comment and
   `retry: 3000`.
 - `GET /api/fs` is a server-side folder browser because browsers cannot expose
@@ -197,7 +233,13 @@ own config; it is validated, used for that run, and optionally persisted.
 - Table-driven tests for config validation, argv generation, progress parsing,
   frame-rate parsing, path planning, collision numbering, file commit and
   rename fallbacks.
+- Verification tests cover truncation, resolution changes, audio loss, audio
+  policies, codec mismatch and trim durations without needing FFmpeg.
+- Manifest tests cover passing outputs, skipped jobs, missing files, exact-size
+  mismatches and tampered hashes.
 - HTTP tests use `httptest` against the real router, covering static assets,
-  config updates, scanning, traversal-free folder browsing and security
-  middleware.
-- FFmpeg itself is not required by the test suite.
+  token authentication, config updates, scanning, traversal-free folder browsing
+  and security middleware.
+- An optional end-to-end test generates a real clip with FFmpeg, converts it with
+  verification and hashing forced on, archives the source and checks the report.
+  It skips automatically when FFmpeg is not installed; CI runs it on Ubuntu.

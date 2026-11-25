@@ -43,6 +43,20 @@ func newTestWatcher(cfg config.Config, clock *fakeClock) *Watcher {
 	})
 }
 
+func TestIgnoreFileSkipsArchiveFolder(t *testing.T) {
+	root := t.TempDir()
+	archive := filepath.Join(root, "archive")
+	cfg := testConfig()
+	cfg.ArchiveDir = archive
+	archived := filepath.Join(archive, "shows", "episode.ts")
+	if !ignoreFile(archived, cfg) {
+		t.Fatal("archived source should be ignored")
+	}
+	if ignoreFile(filepath.Join(root, "shows", "episode.ts"), cfg) {
+		t.Fatal("a normal source should not be ignored")
+	}
+}
+
 func TestAddIgnoresExistingByDefault(t *testing.T) {
 	dir := t.TempDir()
 	writeFile(t, filepath.Join(dir, "old.ts"), "old")

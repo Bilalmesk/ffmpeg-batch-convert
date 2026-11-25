@@ -143,6 +143,20 @@ func Run(ctx context.Context, tool ffmpeg.Tool, cfg config.Config, configPath, t
 		})
 	}
 
+	if cfg.ArchiveDir != "" {
+		if err := checkWritable(cfg.ArchiveDir); err != nil {
+			report.Checks = append(report.Checks, Check{
+				ID: "archive", Label: "Archive folder", Status: "warn",
+				Detail: cfg.ArchiveDir + ": " + err.Error(),
+				Hint:   "Sources will still be converted, but cannot be archived until this folder is writable.",
+			})
+		} else {
+			report.Checks = append(report.Checks, Check{
+				ID: "archive", Label: "Archive folder", Status: "pass", Detail: cfg.ArchiveDir,
+			})
+		}
+	}
+
 	if cfg.LogFile != "" {
 		dir := filepath.Dir(cfg.LogFile)
 		if err := checkWritable(dir); err != nil {

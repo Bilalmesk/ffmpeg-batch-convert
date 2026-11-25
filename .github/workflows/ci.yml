@@ -61,7 +61,10 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg
 
-      - name: Convert a generated clip
+      - name: Pipeline integration test
+        run: go test ./internal/engine -run TestPipeline -v
+
+      - name: Convert, hash and verify a generated clip
         shell: bash
         run: |
           set -euo pipefail
@@ -71,9 +74,33 @@ jobs:
             -f lavfi -i "sine=frequency=440" \
             -t 2 -c:v libx264 -preset ultrafast -c:a aac "$work/in.ts"
           go build -o "$work/ffbatch" .
-          "$work/ffbatch" convert "$work/in.ts" --output "$work/out" --quiet
+          "$work/ffbatch" convert "$work/in.ts" --output "$work/out" \
+            --hash-files --report "$work/report.json" --quiet
           ffprobe -v error -select_streams v:0 -show_entries stream=codec_type -of csv=p=0 "$work/out/in.mp4" | grep -qx video
           ffprobe -v error -select_streams a:0 -show_entries stream=codec_type -of csv=p=0 "$work/out/in.mp4" | grep -qx audio
+          "$work/ffbatch" verify --manifest "$work/report.json" --no-color
+          printf 'x' >> "$work/out/in.mp4"
+          if "$work/ffbatch" verify --manifest "$work/report.json" --no-color >/dev/null 2>&1; then
+            echo "verify accepted a tampered output" >&2
+            exit 1
+          fi
           mkdir -p "$work/gobin"
           GOBIN="$work/gobin" go install ./cmd/ffbatch
           "$work/gobin/ffbatch" version | grep -q "^ffbatch "
+
+  security:
+    name: govulncheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version: stable
+          cache: false
+
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+
+      - name: Scan
+        run: govulncheck ./...

@@ -36,3 +36,18 @@ func TestRunValidConfig(t *testing.T) {
 		t.Fatalf("config should be valid: %+v", report.Checks)
 	}
 }
+
+func TestRunChecksArchiveFolder(t *testing.T) {
+	cfg := config.Default()
+	cfg.ArchiveDir = t.TempDir()
+	report := Run(context.Background(), ffmpeg.Tool{}, cfg, filepath.Join(t.TempDir(), "ffbatch.json"), "")
+	for _, check := range report.Checks {
+		if check.ID == "archive" {
+			if check.Status != "pass" {
+				t.Fatalf("archive check = %+v", check)
+			}
+			return
+		}
+	}
+	t.Fatal("expected an archive folder check")
+}

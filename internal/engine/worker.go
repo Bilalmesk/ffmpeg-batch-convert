@@ -12,6 +12,7 @@ import (
 
 	"github.com/Bilalmesk/ffmpeg-batch-convert/internal/config"
 	"github.com/Bilalmesk/ffmpeg-batch-convert/internal/ffmpeg"
+	"github.com/Bilalmesk/ffmpeg-batch-convert/internal/hashutil"
 	"github.com/Bilalmesk/ffmpeg-batch-convert/internal/mediainfo"
 )
 
@@ -52,7 +53,16 @@ func (m *Manager) runConvert(ctx context.Context, run *Run, job *Job) {
 		return
 	}
 
+	sourceInfo, statErr := os.Stat(job.Input)
+	sourceSize := job.SizeBytes
+	var sourceMod time.Time
+	if statErr == nil {
+		sourceSize = sourceInfo.Size()
+		sourceMod = sourceInfo.ModTime()
+	}
+
 	m.setJob(run, job, "job.updated", func() {
+		job.SizeBytes = sourceSize
 		job.DurationMs = info.DurationMs
 		if info.Video != nil {
 			job.Resolution = fmt.Sprintf("%dx%d", info.Video.Width, info.Video.Height)
@@ -63,6 +73,9 @@ func (m *Manager) runConvert(ctx context.Context, run *Run, job *Job) {
 		}
 		job.Stage = "converting"
 	})
+
+	verify := verificationRequired(cfg)
+	hashFiles := hashingRequired(cfg)
 
 	if cfg.DryRun {
 		build := ffmpeg.Build(ffmpeg.BuildRequest{Cfg: cfg, Input: job.Input, Output: job.Output, Info: info})
@@ -79,8 +92,28 @@ func (m *Manager) runConvert(ctx context.Context, run *Run, job *Job) {
 		return
 	}
 
+	var safetyWarnings []string
+	if verify && !cfg.VerifyOutput {
+		safetyWarnings = append(safetyWarnings, "output verification forced because sources are archived or deleted")
+	}
+	if hashFiles && !cfg.HashFiles {
+		safetyWarnings = append(safetyWarnings, "SHA-256 hashing forced because sources are archived or deleted")
+	}
+	for _, warning := range safetyWarnings {
+		m.log(run, "warn", job.Name+": "+warning)
+	}
+	if len(safetyWarnings) > 0 {
+		m.setJob(run, job, "job.updated", func() {
+			job.Warnings = append(job.Warnings, safetyWarnings...)
+		})
+	}
+
 	if err := os.MkdirAll(filepath.Dir(job.Output), 0o755); err != nil {
 		m.failJob(run, job, fmt.Errorf("create output folder: %w", err))
+		return
+	}
+	if err := ensureOutputSpace(cfg, job); err != nil {
+		m.failJob(run, job, err)
 		return
 	}
 
@@ -88,6 +121,23 @@ func (m *Manager) runConvert(ctx context.Context, run *Run, job *Job) {
 	base := strings.TrimSuffix(filepath.Base(job.Output), ext)
 	temp := filepath.Join(filepath.Dir(job.Output), fmt.Sprintf(".%s.ffbatch-%s.part%s", base, job.ID, ext))
 	_ = os.Remove(temp)
+
+	if hashFiles {
+		m.setJob(run, job, "job.updated", func() { job.Stage = "hashing source" })
+		sourceHash, err := hashutil.SHA256(ctx, job.Input)
+		if err != nil {
+			if ctx.Err() != nil {
+				m.markCanceled(run, job)
+				return
+			}
+			m.failJob(run, job, fmt.Errorf("hash source: %w", err))
+			return
+		}
+		m.setJob(run, job, "job.updated", func() {
+			job.SourceSHA256 = sourceHash
+			job.Stage = "converting"
+		})
+	}
 
 	build := ffmpeg.Build(ffmpeg.BuildRequest{Cfg: cfg, Input: job.Input, Output: temp, Info: info})
 	displayCmd := strings.Replace(build.Command, temp, job.Output, 1)
@@ -113,6 +163,39 @@ func (m *Manager) runConvert(ctx context.Context, run *Run, job *Job) {
 		}
 		m.failJob(run, job, err)
 		return
+	}
+
+	verification := "skipped"
+	verified := false
+	if verify {
+		m.setJob(run, job, "job.updated", func() { job.Stage = "verifying" })
+		if err := verifyOutput(ctx, m.tool, cfg, info, temp); err != nil {
+			_ = os.Remove(temp)
+			if ctx.Err() != nil {
+				m.markCanceled(run, job)
+				return
+			}
+			m.setJob(run, job, "job.updated", func() { job.Verification = "failed" })
+			m.failJob(run, job, fmt.Errorf("output verification failed: %w", err))
+			return
+		}
+		verified = true
+		verification = "passed"
+	}
+
+	if hashFiles {
+		m.setJob(run, job, "job.updated", func() { job.Stage = "hashing output" })
+		outputHash, err := hashutil.SHA256(ctx, temp)
+		if err != nil {
+			_ = os.Remove(temp)
+			if ctx.Err() != nil {
+				m.markCanceled(run, job)
+				return
+			}
+			m.failJob(run, job, fmt.Errorf("hash output: %w", err))
+			return
+		}
+		m.setJob(run, job, "job.updated", func() { job.OutputSHA256 = outputHash })
 	}
 
 	m.setJob(run, job, "job.updated", func() { job.Stage = "finalizing" })
@@ -145,31 +228,78 @@ func (m *Manager) runConvert(ctx context.Context, run *Run, job *Job) {
 		job.Stage = ""
 		job.Progress = 100
 		job.ETASeconds = 0
+		job.Verified = verified
+		job.Verification = verification
 		job.FinishedAt = &now
 	})
 
-	if cfg.DeleteSource && !samePath(job.Input, dest) {
-		if err := os.Remove(job.Input); err != nil {
-			m.log(run, "warn", fmt.Sprintf("%s: converted, but the source could not be deleted: %v", job.Name, err))
-			m.setJob(run, job, "job.updated", func() {
-				job.Warnings = append(job.Warnings, "source could not be deleted: "+err.Error())
-			})
-		} else {
-			m.setJob(run, job, "job.updated", func() { job.SourceRemoved = true })
+	// Never archive or delete a source that changed while it was being read.
+	if cfg.ArchiveDir != "" || cfg.DeleteSource {
+		if !samePath(job.Input, dest) {
+			switch {
+			case statErr != nil:
+				m.log(run, "warn", fmt.Sprintf("%s: converted, but the source could not be re-checked; leaving it in place", job.Name))
+				m.setJob(run, job, "job.updated", func() {
+					job.Warnings = append(job.Warnings, "source could not be re-checked; not archived or deleted")
+				})
+			case !sourceStillMatches(job.Input, sourceSize, sourceMod):
+				m.log(run, "warn", fmt.Sprintf("%s: source changed during conversion; leaving it in place", job.Name))
+				m.setJob(run, job, "job.updated", func() {
+					job.Warnings = append(job.Warnings, "source changed during conversion; not archived or deleted")
+				})
+			case cfg.ArchiveDir != "":
+				m.setJob(run, job, "job.updated", func() { job.Stage = "archiving source" })
+				archived, err := archiveSource(run, job, cfg)
+				if err != nil {
+					m.log(run, "warn", fmt.Sprintf("%s: converted, but the source could not be archived: %v", job.Name, err))
+					m.setJob(run, job, "job.updated", func() {
+						job.Warnings = append(job.Warnings, "source could not be archived: "+err.Error())
+					})
+				} else {
+					m.setJob(run, job, "job.updated", func() {
+						job.SourceArchivedTo = archived
+						job.SourceRemoved = true
+					})
+					m.log(run, "info", fmt.Sprintf("%s: archived source to %s", job.Name, archived))
+				}
+			default:
+				if err := os.Remove(job.Input); err != nil {
+					m.log(run, "warn", fmt.Sprintf("%s: converted, but the source could not be deleted: %v", job.Name, err))
+					m.setJob(run, job, "job.updated", func() {
+						job.Warnings = append(job.Warnings, "source could not be deleted: "+err.Error())
+					})
+				} else {
+					m.setJob(run, job, "job.updated", func() { job.SourceRemoved = true })
+				}
+			}
 		}
 	}
 
-	speed := ""
+	details := []string{humanBytes(size), humanDuration(result.Duration)}
 	if job.Speed > 0.01 {
-		speed = fmt.Sprintf(" · %.1f×", job.Speed)
+		details = append(details, fmt.Sprintf("%.1f×", job.Speed))
 	}
-	m.log(run, "info", fmt.Sprintf("✓ %s · %s · %s%s", job.Name, humanBytes(size), humanDuration(result.Duration), speed))
+	if verified {
+		details = append(details, "verified")
+	}
+	if job.SourceArchivedTo != "" {
+		details = append(details, "source archived")
+	} else if job.SourceRemoved {
+		details = append(details, "source removed")
+	}
+	m.log(run, "info", fmt.Sprintf("✓ %s · %s", job.Name, strings.Join(details, " · ")))
 }
 
 func (m *Manager) runRename(ctx context.Context, run *Run, job *Job) {
 	cfg := run.Config
 	if ctx.Err() != nil {
 		m.markCanceled(run, job)
+		return
+	}
+
+	sourceInfo, err := os.Stat(job.Input)
+	if err != nil {
+		m.failJob(run, job, fmt.Errorf("stat source: %w", err))
 		return
 	}
 
@@ -201,6 +331,21 @@ func (m *Manager) runRename(ctx context.Context, run *Run, job *Job) {
 		return
 	}
 
+	hashSource := hashingRequired(cfg)
+	var sourceHash string
+	if hashSource {
+		m.setJob(run, job, "job.updated", func() { job.Stage = "hashing source" })
+		sourceHash, err = hashutil.SHA256(ctx, job.Input)
+		if err != nil {
+			if ctx.Err() != nil {
+				m.markCanceled(run, job)
+				return
+			}
+			m.failJob(run, job, fmt.Errorf("hash source: %w", err))
+			return
+		}
+	}
+
 	m.setJob(run, job, "job.updated", func() {
 		job.Stage = "renaming"
 		job.Command = command
@@ -215,6 +360,18 @@ func (m *Manager) runRename(ctx context.Context, run *Run, job *Job) {
 	}
 
 	size := statSize(dest)
+	verified := verificationRequired(cfg)
+	verification := "skipped"
+	if verified {
+		if size != sourceInfo.Size() {
+			verified = false
+			verification = "failed"
+			m.setJob(run, job, "job.updated", func() { job.Verification = verification })
+			m.failJob(run, job, fmt.Errorf("renamed file size is %d, expected %d", size, sourceInfo.Size()))
+			return
+		}
+		verification = "passed"
+	}
 	now := time.Now()
 	m.setJob(run, job, "job.done", func() {
 		job.Output = dest
@@ -223,9 +380,19 @@ func (m *Manager) runRename(ctx context.Context, run *Run, job *Job) {
 		job.Stage = ""
 		job.Progress = 100
 		job.SourceRemoved = true
+		job.Verified = verified
+		job.Verification = verification
+		if hashSource {
+			job.SourceSHA256 = sourceHash
+			job.OutputSHA256 = sourceHash
+		}
 		job.FinishedAt = &now
 	})
-	m.log(run, "info", fmt.Sprintf("✓ %s · renamed to %s", job.Name, filepath.Base(dest)))
+	message := fmt.Sprintf("✓ %s · renamed to %s", job.Name, filepath.Base(dest))
+	if verified {
+		message += " · verified"
+	}
+	m.log(run, "info", message)
 }
 
 func (m *Manager) updateProgress(run *Run, job *Job, progress ffmpeg.Progress) {
@@ -347,6 +514,10 @@ func moveFile(src, dst string, overwrite bool) error {
 	if err := replaceFile(temp, dst); err != nil {
 		_ = os.Remove(temp)
 		return err
+	}
+	if copied, err := os.Stat(dst); err != nil || copied.Size() != info.Size() {
+		_ = os.Remove(dst)
+		return fmt.Errorf("copy verification failed for %s", filepath.Base(src))
 	}
 	_ = os.Chtimes(dst, info.ModTime(), info.ModTime())
 	if err := os.Remove(src); err != nil {

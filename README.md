@@ -17,6 +17,10 @@ FFBatch keeps the useful part — FFmpeg — and wraps it in a proper tool:
 - **Watch folders**: drop a file into a folder and FFBatch converts it after it stops growing.
 - **Live per-file progress**, speed and ETA over Server-Sent Events.
 - **Safe writes**: every output is written to a temporary file and only renamed into place after FFmpeg exits successfully.
+- **Verified commits**: the temporary output is probed before it can replace anything — codec, resolution, duration and audio-track count must match the plan. A truncated or malformed result is rejected and the source is left alone.
+- **Chain of custody**: opt-in SHA-256 hashes for sources and outputs, embedded in JSON/CSV reports, plus `ffbatch verify --manifest` to re-check a finished batch later.
+- **Archive instead of delete**: move verified originals into an archive tree, with an automatic guard against changed sources and a refusal to re-watch archived files.
+- **Hardened dashboard**: optional shared-secret authentication, loopback-only by default, and a refusal to expose the UI on a LAN without a token.
 - **Parallel workers**, cancellation, retry of failed jobs, skip/number/replace/fail collision policies.
 - **Trim and track selection**: cut at in/out points, pick the first audio track or all tracks in a preferred language.
 - **Stream-aware planning**: picks the real video stream (not cover art), converts text subtitles to `mov_text` for MP4, skips bitmap subtitles with a warning, and falls back to AAC when copied audio would not play.
@@ -78,7 +82,13 @@ ffbatch doctor          # verify FFmpeg, encoders and folders
 ffbatch serve --open    # start the dashboard
 ```
 
-The dashboard binds to `127.0.0.1` by default and exits with `Ctrl+C`.
+The dashboard binds to `127.0.0.1` by default and exits with `Ctrl+C`. To use it
+from another machine, set a token first:
+
+```powershell
+$env:FFBATCH_TOKEN = "a-long-random-secret"
+ffbatch serve --host 0.0.0.0 --open
+```
 
 ## Quick start with the dashboard
 
@@ -108,6 +118,13 @@ ffbatch remux "D:\Recordings\show.ts" --genpts --aspect 16:9
 # Re-encode to HEVC, delete sources only after each success, write a report
 ffbatch encode "D:\Recordings" --codec h265 --crf 24 --preset medium `
   --delete-source --report "D:\Reports\encode.csv"
+
+# Keep the originals: move each verified source into an archive tree
+ffbatch convert "D:\Recordings" --archive "D:\Archive" --hash-files `
+  --report "D:\Reports\convert.json"
+
+# Re-check a finished batch later (size + SHA-256 + source integrity)
+ffbatch verify --manifest "D:\Reports\convert.json"
 
 # Extension-only rename, no media processing
 ffbatch rename "D:\Shows" --to ts
@@ -140,6 +157,7 @@ Flags may appear before or after paths: `ffbatch convert folder --recursive` and
 | `ffbatch probe` | Show container, duration, streams and size of one file. |
 | `ffbatch serve` | Start the local dashboard (`--open` launches the browser). |
 | `ffbatch doctor` | Check FFmpeg, encoders, config and output folder. |
+| `ffbatch verify` | Verify outputs against a JSON report or probe files. |
 | `ffbatch config` | `show`, `path`, `init`, `validate`. |
 | `ffbatch version` | Build, commit, date and Go runtime. |
 
@@ -173,7 +191,7 @@ Scanning in `rename` mode also discovers `.mp4` files, so `ffbatch rename D:\Sho
 1. A file appears (recorder, download, network share).
 2. FFBatch waits until its size and modified time have been stable for the settle window (10 seconds by default).
 3. It starts a batch using the current Convert settings. If another batch is running, the files stay queued.
-4. Files that are still growing are ignored until they settle. Output folders and files already in the target format are skipped.
+4. Files that are still growing are ignored until they settle. Output folders, archive folders, and files already in the target format are skipped.
 
 ```powershell
 ffbatch watch "D:\Recordings" --recursive --settle 15
@@ -189,12 +207,39 @@ When a run has failed jobs, the Runs screen shows **Retry N failed**. It starts 
 ## Safety model
 
 - Outputs are written as `.<name>.ffbatch-<job>.part.<ext>` next to the destination and renamed into place only on success.
+- **Verification is on by default.** Before the rename, FFBatch probes the temporary file and checks the video codec, resolution, duration (with a small container tolerance), and the expected audio-track count. A mismatch removes the temporary file and fails the job, so a bad output never replaces a good source. Disable it with `--verify-output=false` or `"verifyOutput": false`.
 - A failed or cancelled job removes its temporary file.
+- **Disk-space preflight** estimates the output size and refuses to start when the destination volume is too full, instead of filling the disk with a partial file.
 - `--overwrite skip` (default) leaves existing outputs alone; `number` picks `name (1).mp4`; `overwrite` replaces atomically; `fail` marks the job failed.
-- Inputs are never modified unless `--delete-source` is set, and deletion only happens after a successful commit.
+- Inputs are never modified unless `--delete-source` or `--archive` is set, and only after a verified commit. The source's size and modification time are re-checked first; if it changed during conversion it is left in place.
+- `--archive DIR` moves the original into `DIR`, preserving its path relative to the scanned root. It cannot be combined with `--delete-source`, is refused in rename mode, and the watcher ignores the archive tree so archived files are never converted again.
 - An output that would overwrite its own source is refused.
 - Two inputs mapping to the same output are automatically disambiguated with a numbered suffix and a warning.
-- The dashboard only accepts `application/json` mutations with a same-origin check, CSP, `X-Frame-Options: DENY`, and a loopback bind by default.
+- The dashboard only accepts `application/json` mutations with a same-origin check, CSP, `X-Frame-Options: DENY`, and a loopback bind by default. A non-loopback bind requires `--token` (or `FFBATCH_TOKEN`) unless `--insecure` is passed explicitly.
+- When a token is set, `?token=SECRET` on the first visit sets an HttpOnly, SameSite=Strict cookie and redirects to `/`. API clients can send `Authorization: Bearer SECRET` or `X-FFBatch-Token: SECRET`. The dashboard speaks HTTP, not HTTPS: use a VPN, SSH tunnel or trusted network for sensitive material.
+- GitHub release archives carry SHA-256 checksums, a signed build-provenance attestation and an SPDX SBOM. CI runs CodeQL and `govulncheck`.
+
+## Trusted pipeline
+
+For recordings you cannot easily recreate — interviews, evidence, family archives — turn on the full chain:
+
+```powershell
+ffbatch convert "D:\Evidence\case-042" `
+  --output "D:\Derived\case-042" `
+  --archive "D:\Originals\case-042" `
+  --hash-files --report "D:\Reports\case-042.json"
+```
+
+What happens:
+
+1. The source is hashed (forced automatically whenever a source is archived or deleted).
+2. FFmpeg writes a temporary output.
+3. The output is probed and compared with the source plan.
+4. The output is hashed and atomically committed.
+5. The source is re-checked, then moved to the archive tree.
+6. The JSON report records both hashes, the verification result, the archive destination and every warning.
+
+Months later, `ffbatch verify --manifest D:\Reports\case-042.json` re-hashes every output and the archived originals. A changed size or hash returns exit code 1 and names the affected file. The same data is available as CSV for spreadsheets.
 
 ## Recipes
 
@@ -228,6 +273,9 @@ See [`ffbatch.example.json`](ffbatch.example.json) for every field.
   "outputDir": "",
   "overwrite": "skip",
   "deleteSource": false,
+  "archiveDir": "",
+  "verifyOutput": true,
+  "hashFiles": false,
   "workers": 4,
   "faststart": true,
   "aspect": "",
@@ -246,11 +294,20 @@ See [`ffbatch.example.json`](ffbatch.example.json) for every field.
 }
 ```
 
-CLI flags always override the file. The dashboard's Advanced panel exposes workers, aspect, trim points, extensions, faststart, timestamps, source deletion, dry run and the log file. Audio track selection and the preferred language live in the Mode card because they apply to both remux and encode. Dashboard changes are sent to the running server immediately, so the Watch feature always uses the current settings.
+CLI flags always override the file. The dashboard's Output card exposes the archive folder, while the Advanced panel adds workers, aspect, trim points, extensions, faststart, timestamps, output verification, SHA-256 hashing, source deletion, dry run and the log file. Audio track selection and the preferred language live in the Mode card because they apply to both remux and encode. Dashboard changes are sent to the running server immediately, so the Watch feature always uses the current settings.
 
 ## Reports and logs
 
-`--report FILE.json` writes a run document with the effective config, every job, timings, output sizes, warnings and errors. `--report FILE.csv` writes one row per job. The CSV is UTF-8 with a BOM so Excel keeps non-ASCII filenames intact. The dashboard downloads the same data from the Runs screen.
+`--report FILE.json` writes a run document with the manifest schema, FFBatch version, effective config, every job, timings, output sizes, verification results, SHA-256 hashes, warnings and errors. `--report FILE.csv` writes one row per job. The CSV is UTF-8 with a BOM so Excel keeps non-ASCII filenames intact. The dashboard downloads the same data from the Runs screen.
+
+The JSON report doubles as a **manifest**:
+
+```powershell
+ffbatch verify --manifest "D:\Reports\encode.json"          # table
+ffbatch verify --manifest "D:\Reports\encode.json" --json   # machine-readable
+```
+
+Every completed job is checked for existence, exact size and SHA-256. When a source hash is present it is verified too: at the original path if it still exists, at the recorded archive path if it was archived, or reported as removed if it was deleted. Exit code is 1 on any failure, so it can gate a backup or publishing step.
 
 `--log FILE` appends timestamped run and job lines. The dashboard keeps an in-memory activity log for each run and exposes it in the Runs screen.
 
@@ -273,6 +330,7 @@ The original scripts live in [`legacy/`](legacy/) with a mapping table. The shor
 - **Encode** is CPU-bound. Start with one worker per physical core, then reduce if the machine becomes unresponsive. `--preset veryfast`/`fast` gives the best quality-per-minute; `slow`/`veryslow` buy smaller files.
 - **CRF**: 18 visually lossless, 20–22 high quality, 23–25 balanced, 26+ smaller. Lower is bigger and better.
 - Keep sources and outputs on the same volume when possible; the final rename is then instantaneous.
+- `--hash-files` adds one full read of every source and output. It is forced for `--archive`/`--delete-source`, where the audit trail matters more than the extra I/O.
 - Network shares work, but `ffprobe` and `ffmpeg` add latency per file.
 
 ## Development
@@ -283,9 +341,11 @@ cmd/ffbatch/   go-install entry point (thin wrapper over internal/cli)
 internal/
   cli/        commands, flag parsing, rich terminal output
   config/     defaults, validation, JSON load/save, recipes
+  disk/       free-space probes (Windows + Unix)
   doctor/     environment diagnostics
-  engine/     scanning, planning, worker pool, events, reports
+  engine/     scanning, planning, worker pool, verification, reports
   ffmpeg/     binary discovery, argv builder, progress parser, process runner
+  hashutil/   streaming SHA-256 for chain-of-custody reports
   mediainfo/  ffprobe wrapper
   term/       ANSI styling + Windows virtual terminal
   units/      human-readable sizes and durations
@@ -308,7 +368,7 @@ More detail: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and [`docs/API.md`](
 
 ### Release
 
-Tag a commit (`v0.2.0`) and push it. GitHub Actions runs tests and GoReleaser builds Windows, macOS and Linux archives with checksums. See [`.goreleaser.yaml`](.goreleaser.yaml).
+Tag a commit (`v0.3.0`) and push it. GitHub Actions runs tests and GoReleaser builds Windows, macOS and Linux archives with checksums. It then generates an SPDX SBOM and signed build-provenance/SBOM attestations for the archives. See [`.goreleaser.yaml`](.goreleaser.yaml).
 
 ## Troubleshooting
 
@@ -323,6 +383,11 @@ Tag a commit (`v0.2.0`) and push it. GitHub Actions runs tests and GoReleaser bu
 | Trim starts with a brief glitch | Stream copy trims at the first packet at/after the cut. Use Encode mode for a frame-accurate seek. |
 | Preferred audio language is missing | FFBatch falls back to the first track and records a warning; check the language tags in `ffbatch probe`. |
 | Dashboard port busy | `ffbatch serve --port 0` picks a free port. |
+| `401 Unauthorized` in the dashboard | A token is configured. Open the printed URL with `?token=SECRET` once, or pass the token as `Authorization: Bearer`/`X-FFBatch-Token`. |
+| `refusing to expose the dashboard` | Set `FFBATCH_TOKEN` (16+ characters) or pass `--token`; `--insecure` explicitly allows an unauthenticated LAN bind. |
+| Verification failed after a conversion | The output was truncated or structurally wrong. The temporary file was removed and the source was left untouched; check free space, the FFmpeg log and `ffbatch probe` on the source. |
+| `not enough free space` | The destination volume cannot hold the estimated output. Free space, choose another output folder, or convert fewer files at once. |
+| Archived files keep appearing in Watch | Upgrade to 0.3.0; the watcher now ignores the archive folder. |
 | Windows SmartScreen warning | The binary is unsigned. Build it yourself or use `Unblock-File` on the release archive. |
 | Arabic or other Unicode names | The app is UTF-8 end-to-end. Use Windows Terminal for the best console rendering. |
 | Encoder missing | Use a full FFmpeg build (gyan.dev or BtbN). Hardware encoders are not required. |
@@ -334,9 +399,11 @@ Pull requests are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md), follow the
 described in [SECURITY.md](SECURITY.md).
 
 Every pull request runs CI on **Windows and Ubuntu**: `gofmt`, `go vet`,
-`go test ./...`, a full build, and an end-to-end FFmpeg smoke conversion on
-Ubuntu. Pushing a `v*` tag runs the same CI matrix before GoReleaser builds the
-Windows, macOS and Linux archives and publishes the GitHub release.
+`go test ./...`, a full build, `govulncheck`, and an end-to-end FFmpeg smoke
+conversion that also exercises hashing, verification and tamper rejection on
+Ubuntu. CodeQL analyzes the Go code on every push and pull request. Pushing a
+`v*` tag runs the same CI matrix before GoReleaser builds the Windows, macOS and
+Linux archives and publishes the GitHub release.
 
 ## License
 

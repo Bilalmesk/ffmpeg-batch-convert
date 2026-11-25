@@ -8,9 +8,12 @@ that way is part of the design.
 - **Go standard library only.** New modules need a very good reason.
 - **No UI build step.** The dashboard is HTML, CSS and ES2020 in
   `internal/web/assets/`. Rebuild the binary to refresh the embedded copy.
-- **Test the engine, not FFmpeg.** The test suite must pass on a machine
-  without FFmpeg installed.
-- **Update `docs/API.md`** when an endpoint or event changes.
+- **Test the engine, not FFmpeg.** The default test suite must pass on a machine
+  without FFmpeg installed. The end-to-end pipeline test skips itself when
+  `ffmpeg` is absent.
+- **Never silently weaken a safety check.** Verification, hashing and archive
+  paths are covered by focused tests; add cases for new failure modes.
+- **Update `docs/API.md`** when an endpoint, event or job field changes.
 
 ## Local workflow
 
@@ -29,9 +32,10 @@ are still growing.
 
 ## Continuous integration
 
-Every pull request runs formatting, `go vet`, the unit/HTTP suite, a full build on
-Windows and Ubuntu, and an end-to-end FFmpeg conversion smoke test on Ubuntu.
-Release tags run the same CI matrix before GoReleaser publishes archives.
+Every pull request runs formatting, `go vet`, the unit/HTTP suite, `govulncheck`,
+a full build on Windows and Ubuntu, CodeQL analysis, and an end-to-end FFmpeg
+conversion smoke test on Ubuntu that also verifies hashes and rejects a tampered
+file. Release tags run the same CI matrix before GoReleaser publishes archives.
 
 ## Pull requests
 

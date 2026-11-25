@@ -38,6 +38,8 @@ type Options struct {
 	ToolError  string
 	Version    string
 	Commit     string
+	// Token optionally requires a shared secret before serving the dashboard.
+	Token string
 }
 
 // Server is the local dashboard.
@@ -53,6 +55,7 @@ type Server struct {
 	startedAt  time.Time
 	address    string
 	toolError  string
+	token      string
 	watcher    *watch.Watcher
 
 	ctx    context.Context
@@ -79,6 +82,7 @@ func New(opts Options) (*Server, error) {
 		startedAt:  time.Now(),
 		address:    opts.Address,
 		toolError:  opts.ToolError,
+		token:      strings.TrimSpace(opts.Token),
 		ctx:        ctx,
 		cancel:     cancel,
 	}
@@ -224,7 +228,7 @@ func (s *Server) routes() http.Handler {
 		}
 	})
 
-	return s.security(mux)
+	return s.auth(s.security(mux))
 }
 
 func (s *Server) security(next http.Handler) http.Handler {
