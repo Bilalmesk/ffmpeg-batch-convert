@@ -210,8 +210,8 @@ own config; it is validated, used for that run, and optionally persisted.
 - Middleware enforces JSON content type and same-origin for mutations, and sets
   CSP, `X-Frame-Options`, `X-Content-Type-Options` and `Referrer-Policy`.
 - Optional bearer authentication wraps the whole router. The `?token=` flow sets
-  a hashed-comparison, HttpOnly, SameSite=Strict cookie and redirects without the
-  secret. A non-loopback bind is rejected by the CLI unless a token or
+  a hashed-comparison, HttpOnly, SameSite=Strict cookie and redirects to the
+  dashboard root. A non-loopback bind is rejected by the CLI unless a token or
   `--insecure` is present.
 - SSE uses a subscriber channel per client, a 15-second keepalive comment and
   `retry: 3000`.

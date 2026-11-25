@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/Bilalmesk/ffmpeg-batch-convert/internal/config"
@@ -70,11 +69,12 @@ func archiveSource(run *Run, job *Job, cfg config.Config) (string, error) {
 
 	name := filepath.Base(job.Input)
 	if run.Root != "" {
-		if rel, err := filepath.Rel(run.Root, job.Input); err == nil {
-			if rel != "." && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) && !filepath.IsAbs(rel) {
-				name = rel
-			}
+		if rel, err := filepath.Rel(run.Root, job.Input); err == nil && rel != "." && filepath.IsLocal(rel) {
+			name = rel
 		}
+	}
+	if !filepath.IsLocal(name) {
+		return "", fmt.Errorf("refusing a non-local archive path: %q", name)
 	}
 	dest := filepath.Join(root, name)
 	if samePath(dest, job.Input) {

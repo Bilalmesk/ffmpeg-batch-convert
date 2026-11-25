@@ -37,8 +37,8 @@ func TestTokenAuth(t *testing.T) {
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("query token status = %d, want 303", rec.Code)
 	}
-	if location := rec.Header().Get("Location"); location != "/api/status" {
-		t.Fatalf("redirect location = %q, want /api/status", location)
+	if location := rec.Header().Get("Location"); location != "/" {
+		t.Fatalf("redirect location = %q, want /", location)
 	}
 	cookies := rec.Result().Cookies()
 	if len(cookies) != 1 || cookies[0].Name != authCookieName || !cookies[0].HttpOnly {

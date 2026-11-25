@@ -40,17 +40,11 @@ func (s *Server) auth(next http.Handler) http.Handler {
 						Value:    s.token,
 						Path:     "/",
 						HttpOnly: true,
+						Secure:   r.TLS != nil,
 						SameSite: http.SameSiteStrictMode,
 						MaxAge:   authCookieAge,
 					})
-					clean := *r.URL
-					values := clean.Query()
-					values.Del("token")
-					target := clean.Path
-					if encoded := values.Encode(); encoded != "" {
-						target += "?" + encoded
-					}
-					http.Redirect(w, r, target, http.StatusSeeOther)
+					http.Redirect(w, r, "/", http.StatusSeeOther)
 					return
 				}
 			}

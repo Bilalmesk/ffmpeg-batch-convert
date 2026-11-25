@@ -175,7 +175,7 @@ Flags:
 The server listens on loopback only unless you change --host. A non-loopback
 bind requires --token (at least 16 characters) unless you pass --insecure.
 Open the printed URL with ?token=SECRET once; the server sets an HttpOnly
-cookie and redirects to the clean URL. API clients may instead send
+cookie and redirects to /. API clients may instead send
 "Authorization: Bearer SECRET" or "X-FFBatch-Token: SECRET".
 
 Press Ctrl+C to stop it.

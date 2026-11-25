@@ -10,8 +10,8 @@ served from the same origin as the UI (default `http://127.0.0.1:8737`).
   passed explicitly.
 - With a token configured, every route requires it. The browser flow is
   `GET /?token=SECRET`: the server sets an HttpOnly, SameSite=Strict cookie and
-  redirects to the URL without the token. Non-browser clients may send
-  `Authorization: Bearer SECRET` or `X-FFBatch-Token: SECRET`.
+  redirects to `/`. Non-browser clients may send `Authorization: Bearer SECRET`
+  or `X-FFBatch-Token: SECRET`.
 - `POST`/`PUT`/`PATCH`/`DELETE` requests **must** send
   `Content-Type: application/json`.
 - If an `Origin` header is present it must match the request host.

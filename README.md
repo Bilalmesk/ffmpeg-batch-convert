@@ -216,7 +216,7 @@ When a run has failed jobs, the Runs screen shows **Retry N failed**. It starts 
 - An output that would overwrite its own source is refused.
 - Two inputs mapping to the same output are automatically disambiguated with a numbered suffix and a warning.
 - The dashboard only accepts `application/json` mutations with a same-origin check, CSP, `X-Frame-Options: DENY`, and a loopback bind by default. A non-loopback bind requires `--token` (or `FFBATCH_TOKEN`) unless `--insecure` is passed explicitly.
-- When a token is set, `?token=SECRET` on the first visit sets an HttpOnly, SameSite=Strict cookie and redirects to a clean URL. API clients can send `Authorization: Bearer SECRET` or `X-FFBatch-Token: SECRET`. The dashboard speaks HTTP, not HTTPS: use a VPN, SSH tunnel or trusted network for sensitive material.
+- When a token is set, `?token=SECRET` on the first visit sets an HttpOnly, SameSite=Strict cookie and redirects to `/`. API clients can send `Authorization: Bearer SECRET` or `X-FFBatch-Token: SECRET`. The dashboard speaks HTTP, not HTTPS: use a VPN, SSH tunnel or trusted network for sensitive material.
 - GitHub release archives carry SHA-256 checksums, a signed build-provenance attestation and an SPDX SBOM. CI runs CodeQL and `govulncheck`.
 
 ## Trusted pipeline
