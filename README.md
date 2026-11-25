@@ -368,7 +368,7 @@ More detail: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and [`docs/API.md`](
 
 ### Release
 
-Tag a commit (`v0.3.0`) and push it. GitHub Actions runs tests and GoReleaser builds Windows, macOS and Linux archives with checksums. It then generates an SPDX SBOM and signed build-provenance/SBOM attestations for the archives. See [`.goreleaser.yaml`](.goreleaser.yaml).
+Tag a commit (`v0.3.1`) and push it. GitHub Actions runs tests and GoReleaser builds Windows, macOS and Linux archives with checksums. It then generates an SPDX SBOM and signed build-provenance/SBOM attestations for the archives. See [`.goreleaser.yaml`](.goreleaser.yaml).
 
 ## Troubleshooting
 
