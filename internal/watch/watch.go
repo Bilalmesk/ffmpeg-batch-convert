@@ -516,6 +516,12 @@ func ignoreFile(path string, cfg config.Config) bool {
 			return true
 		}
 	}
+	// Archived originals keep their extension and must never be re-converted.
+	if cfg.ArchiveDir != "" {
+		if archive, err := filepath.Abs(cfg.ArchiveDir); err == nil && isUnder(path, archive) {
+			return true
+		}
+	}
 	return false
 }
 

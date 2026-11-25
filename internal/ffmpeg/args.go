@@ -221,6 +221,12 @@ func isFaststartContainer(format string) bool {
 	return isMP4(format)
 }
 
+// SelectedAudioStreams applies the configured audio policy and returns the
+// streams that will be mapped, plus any compatibility warnings.
+func SelectedAudioStreams(cfg config.Config, info *mediainfo.Info) ([]mediainfo.Stream, []string) {
+	return selectAudioStreams(cfg, info)
+}
+
 // selectAudioStreams applies the all/first/preferred-language policy.
 func selectAudioStreams(cfg config.Config, info *mediainfo.Info) ([]mediainfo.Stream, []string) {
 	if info == nil || len(info.Audios) == 0 {

@@ -51,6 +51,19 @@ func TestReorderArgsHonoursTerminator(t *testing.T) {
 	}
 }
 
+func TestIsLoopbackHost(t *testing.T) {
+	for _, host := range []string{"127.0.0.1", "localhost", "::1", "[::1]", "127.0.0.53"} {
+		if !isLoopbackHost(host) {
+			t.Fatalf("%q should be loopback", host)
+		}
+	}
+	for _, host := range []string{"0.0.0.0", "192.168.1.10", "example.com", ""} {
+		if isLoopbackHost(host) {
+			t.Fatalf("%q should not be loopback", host)
+		}
+	}
+}
+
 func TestSplitList(t *testing.T) {
 	got := splitList(" .ts, mkv ;mov  mp4 ")
 	want := []string{"ts", "mkv", "mov", "mp4"}

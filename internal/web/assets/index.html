@@ -267,6 +267,18 @@
                       <button class="btn btn-ghost" id="browseOutput" type="button">Browse</button>
                     </div>
                   </div>
+                  <div class="field span-2">
+                    <label for="archiveDir">Archive sources to <span class="muted">optional</span></label>
+                    <div class="input-row">
+                      <div class="input-wrap">
+                        <svg class="icon" aria-hidden="true"><use href="#i-folder"></use></svg>
+                        <input id="archiveDir" type="text" spellcheck="false" autocomplete="off"
+                               placeholder="Move verified originals here instead of deleting them">
+                      </div>
+                      <button class="btn btn-ghost" id="browseArchive" type="button">Browse</button>
+                    </div>
+                    <p class="hint">A source is only moved after its output passes verification. Mutually exclusive with deleting sources.</p>
+                  </div>
                 </div>
               </section>
             </div>
@@ -415,6 +427,8 @@
                       <div class="checks">
                         <label class="check"><input type="checkbox" id="faststart"> MP4 faststart index</label>
                         <label class="check"><input type="checkbox" id="genpts"> Regenerate timestamps</label>
+                        <label class="check"><input type="checkbox" id="verifyOutput"> Verify outputs before saving</label>
+                        <label class="check"><input type="checkbox" id="hashFiles"> Record SHA-256 hashes</label>
                         <label class="check"><input type="checkbox" id="deleteSource"> Delete sources after success</label>
                         <label class="check"><input type="checkbox" id="dryRun"> Dry run — plan only</label>
                       </div>

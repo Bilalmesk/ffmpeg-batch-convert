@@ -80,8 +80,13 @@ type Config struct {
 	Format       string          `json:"format"`
 	Overwrite    OverwritePolicy `json:"overwrite"`
 	DeleteSource bool            `json:"deleteSource"`
+	ArchiveDir   string          `json:"archiveDir"`
 	DryRun       bool            `json:"dryRun"`
 	Workers      int             `json:"workers"`
+
+	// Verification and chain-of-custody.
+	VerifyOutput bool `json:"verifyOutput"`
+	HashFiles    bool `json:"hashFiles"`
 
 	// Container / stream options.
 	Faststart     bool   `json:"faststart"`
@@ -106,24 +111,25 @@ type Config struct {
 // scripts: stream copy into MP4, skip existing outputs, never delete sources.
 func Default() Config {
 	return Config{
-		FFmpegPath:  "ffmpeg",
-		FFprobePath: "ffprobe",
-		Mode:        ModeRemux,
-		Recursive:   false,
-		Extensions:  DefaultExtensions(),
-		Format:      "mp4",
-		Overwrite:   OverwriteSkip,
-		Workers:     defaultWorkers(),
-		Faststart:   true,
-		Aspect:      "",
-		GenPTS:      true,
-		VideoCodec:  "h264",
-		CRF:         22,
-		Preset:      "fast",
-		AudioCodec:  "copy",
-		AudioRate:   "192k",
-		AudioTracks: "all",
-		Subtitle:    "auto",
+		FFmpegPath:   "ffmpeg",
+		FFprobePath:  "ffprobe",
+		Mode:         ModeRemux,
+		Recursive:    false,
+		Extensions:   DefaultExtensions(),
+		Format:       "mp4",
+		Overwrite:    OverwriteSkip,
+		Workers:      defaultWorkers(),
+		VerifyOutput: true,
+		Faststart:    true,
+		Aspect:       "",
+		GenPTS:       true,
+		VideoCodec:   "h264",
+		CRF:          22,
+		Preset:       "fast",
+		AudioCodec:   "copy",
+		AudioRate:    "192k",
+		AudioTracks:  "all",
+		Subtitle:     "auto",
 	}
 }
 
@@ -154,6 +160,7 @@ func (c *Config) Normalize() {
 	c.TrimStart = strings.TrimSpace(c.TrimStart)
 	c.TrimEnd = strings.TrimSpace(c.TrimEnd)
 	c.OutputDir = strings.TrimSpace(c.OutputDir)
+	c.ArchiveDir = strings.TrimSpace(c.ArchiveDir)
 	c.LogFile = strings.TrimSpace(c.LogFile)
 	c.FFmpegPath = strings.TrimSpace(c.FFmpegPath)
 	c.FFprobePath = strings.TrimSpace(c.FFprobePath)
@@ -277,6 +284,12 @@ func (c Config) Validate() error {
 	}
 	if c.Aspect != "" && !aspectPattern.MatchString(c.Aspect) {
 		add("aspect must look like 16:9 (got %q)", c.Aspect)
+	}
+	if c.ArchiveDir != "" && c.DeleteSource {
+		add("deleteSource and archiveDir are mutually exclusive; choose one")
+	}
+	if c.Mode == ModeRename && c.ArchiveDir != "" {
+		add("archiveDir is not supported in rename mode")
 	}
 	if c.Mode == ModeRename && c.DeleteSource {
 		// Renaming already moves the source; the flag has no additional effect.

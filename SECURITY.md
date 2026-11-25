@@ -10,7 +10,8 @@ Security fixes are provided for the latest released minor version.
 
 | Version | Supported |
 | --- | --- |
-| 0.2.x | ✅ |
+| 0.3.x | ✅ |
+| 0.2.x | Security fixes only |
 | < 0.2 | ❌ |
 
 ## Reporting a vulnerability
@@ -39,6 +40,10 @@ window for a fix before public disclosure.
 - FFmpeg/FFprobe vulnerabilities belong to the FFmpeg project; update your
   FFmpeg build.
 - The dashboard is not intended to be exposed to the public internet. Binding it
-  to a non-loopback address is an explicit opt-in and your responsibility.
+  to a non-loopback address requires a shared-secret token (or the explicit
+  `--insecure` opt-out) and remains your responsibility.
+- `FFBATCH_TOKEN` and `--token` are secrets. Prefer the environment variable over
+  a command line that may be captured in shell history. The dashboard uses HTTP,
+  not HTTPS; use a VPN, SSH tunnel or trusted network for sensitive media.
 - Media files are untrusted input. Report crashes or unexpected command
   construction, not the media content itself.

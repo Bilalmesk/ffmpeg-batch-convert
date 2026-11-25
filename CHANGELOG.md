@@ -4,6 +4,60 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+## [0.3.0] - 2026-11-25
+
+### Added
+
+- **Verified commits** (`verifyOutput`, on by default): before a temporary output
+  is renamed into place, FFBatch probes it and checks video codec, resolution,
+  duration and the expected audio-track count. A mismatch deletes the temporary
+  file and fails the job, leaving the source untouched.
+- **Chain-of-custody hashes** (`--hash-files`, `hashFiles`): streamed SHA-256 for
+  every source and output, embedded in JSON and CSV reports. Hashing is forced
+  whenever a source will be archived or deleted.
+- **Safe source archiving** (`--archive DIR`, `archiveDir`): move verified
+  originals into a mirror tree instead of deleting them. The source is re-checked
+  for size/mtime changes first, archive/delete are mutually exclusive, and the
+  watcher ignores the archive folder.
+- **`ffbatch verify`**: re-check a JSON report manifest by existence, size,
+  SHA-256 and source integrity, or probe arbitrary files with ffprobe. Exits 1 on
+  any failure, so it can gate backups or publishing.
+- **Disk-space preflight** before each job, using platform free-space probes on
+  Windows and Unix.
+- **Dashboard authentication**: `serve --token` / `FFBATCH_TOKEN` with a
+  constant-time comparison, HttpOnly SameSite=Strict cookie after a `?token=`
+  login, and `Authorization: Bearer` / `X-FFBatch-Token` for API clients.
+- **Supply-chain hardening**: release archives now receive signed build
+  provenance and SBOM attestations plus an SPDX SBOM asset; CI runs
+  `govulncheck` and CodeQL.
+
+### Changed
+
+- The web dashboard exposes archive folder, output verification and SHA-256
+  hashing controls. Job rows show `verified` and `source archived`.
+- CLI summaries report the number of verified outputs.
+- A non-loopback `serve --host` now requires a token unless `--insecure` is
+  passed explicitly.
+- `ffbatch.example.json`, README, API and architecture docs describe the trusted
+  pipeline and authentication.
+
+### Fixed
+
+- Archive folders are excluded from Watch scans, preventing archived originals
+  from being converted again.
+- The duration check uses a bounded tolerance so short trimmed outputs cannot
+  pass with a badly truncated result.
+
+### Upgrade notes
+
+- Output verification is enabled by default. If an existing workflow produces
+  structurally different files on purpose (for example a deliberate resolution
+  change), pass `--verify-output=false` or set `"verifyOutput": false`.
+- A dashboard bound beyond loopback now refuses to start without `--token` or
+  `FFBATCH_TOKEN` unless `--insecure` is supplied.
+
 ## [0.2.2] - 2026-11-21
 
 ### Fixed

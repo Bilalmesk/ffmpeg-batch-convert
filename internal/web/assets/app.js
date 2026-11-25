@@ -354,6 +354,7 @@
   const BINDINGS = [
     { id: "format", key: "format" },
     { id: "outputDir", key: "outputDir" },
+    { id: "archiveDir", key: "archiveDir" },
     { id: "overwrite", key: "overwrite" },
     { id: "videoCodec", key: "videoCodec" },
     { id: "crf", key: "crf", type: "number" },
@@ -370,6 +371,8 @@
     { id: "extensions", key: "extensions", type: "list" },
     { id: "faststart", key: "faststart", type: "bool" },
     { id: "genpts", key: "genPts", type: "bool" },
+    { id: "verifyOutput", key: "verifyOutput", type: "bool" },
+    { id: "hashFiles", key: "hashFiles", type: "bool" },
     { id: "deleteSource", key: "deleteSource", type: "bool" },
     { id: "dryRun", key: "dryRun", type: "bool" },
     { id: "logFile", key: "logFile" },
@@ -943,6 +946,22 @@
   function bindSource() {
     $("#browseSource").addEventListener("click", () => openBrowser("source"));
     $("#browseOutput").addEventListener("click", () => openBrowser("output"));
+    $("#browseArchive").addEventListener("click", () => openBrowser("archive"));
+    // Deleting and archiving are mutually exclusive; clear the other choice.
+    $("#deleteSource").addEventListener("change", (event) => {
+      if (!event.target.checked) return;
+      const archive = $("#archiveDir");
+      if (!archive.value) return;
+      archive.value = "";
+      readBinding(BINDINGS.find((binding) => binding.id === "archiveDir"));
+      scheduleConfigSync();
+    });
+    $("#archiveDir").addEventListener("change", (event) => {
+      if (!event.target.value.trim()) return;
+      $("#deleteSource").checked = false;
+      readBinding(BINDINGS.find((binding) => binding.id === "deleteSource"));
+      scheduleConfigSync();
+    });
     $("#scanBtn").addEventListener("click", scanFolder);
     $("#selectAll").addEventListener("click", () => selectAllFiles(true));
     $("#selectNone").addEventListener("click", () => selectAllFiles(false));
@@ -1209,6 +1228,8 @@
     if (job.durationMs) parts.push(fmtClock(job.durationMs));
     if (job.resolution) parts.push(job.resolution);
     if (job.videoCodec) parts.push(job.audioCodec ? `${job.videoCodec} / ${job.audioCodec}` : job.videoCodec);
+    if (job.verified) parts.push("verified");
+    if (job.sourceArchivedTo) parts.push("source archived");
     if (job.warnings && job.warnings.length) parts.push(`${job.warnings.length} warning${job.warnings.length === 1 ? "" : "s"}`);
     return parts.join(" · ");
   }
@@ -1228,7 +1249,17 @@
 
   function jobStage(job) {
     if (job.status === "running") {
-      const stages = { starting: "starting", probing: "probing", converting: "converting", finalizing: "finalising", renaming: "renaming" };
+      const stages = {
+        starting: "starting",
+        probing: "probing",
+        "hashing source": "hashing source",
+        converting: "converting",
+        verifying: "verifying",
+        "hashing output": "hashing output",
+        finalizing: "finalising",
+        "archiving source": "archiving source",
+        renaming: "renaming",
+      };
       return stages[job.stage] || "working";
     }
     if (job.status === "skipped") return job.reason || "skipped";
@@ -1899,18 +1930,28 @@
       ? "Choose a source folder"
       : isWatch
         ? "Choose a folder to watch"
-        : "Choose an output folder";
+        : mode === "archive"
+          ? "Choose an archive folder"
+          : "Choose an output folder";
     $("#browserSub").textContent = mode === "source"
       ? "FFBatch scans this folder for the configured extensions."
       : isWatch
         ? "New files will be converted using the current Convert settings."
-        : "Converted files will be written here.";
+        : mode === "archive"
+          ? "Verified originals will be moved here after conversion."
+          : "Converted files will be written here.";
     $("#watchDialogOptions").hidden = !isWatch;
     if (isWatch) {
       $("#watchRecursive").checked = Boolean(state.config && state.config.recursive);
       $("#watchExisting").checked = false;
     }
-    const input = mode === "source" ? $("#sourcePath") : isWatch ? null : $("#outputDir");
+    const input = mode === "source"
+      ? $("#sourcePath")
+      : isWatch
+        ? null
+        : mode === "archive"
+          ? $("#archiveDir")
+          : $("#outputDir");
     const start = input ? input.value.trim() : $("#sourcePath").value.trim();
     $("#browserPath").value = start || state.browser.path || "";
     $("#browserDialog").showModal();
@@ -2031,8 +2072,15 @@
         $("#browserDialog").close();
         scanFolder();
       } else {
-        $("#outputDir").value = path;
-        readBinding(BINDINGS.find((binding) => binding.id === "outputDir"));
+        const isArchive = state.browser.mode === "archive";
+        const target = isArchive ? $("#archiveDir") : $("#outputDir");
+        const bindingID = isArchive ? "archiveDir" : "outputDir";
+        target.value = path;
+        readBinding(BINDINGS.find((binding) => binding.id === bindingID));
+        if (isArchive) {
+          $("#deleteSource").checked = false;
+          readBinding(BINDINGS.find((binding) => binding.id === "deleteSource"));
+        }
         $("#browserDialog").close();
         updateLaunchSummary();
         scheduleConfigSync();

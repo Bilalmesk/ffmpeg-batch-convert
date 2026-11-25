@@ -41,6 +41,7 @@ type convertOptions struct {
 	trimEnd     string
 	overwrite   string
 	aspect      string
+	archiveDir  string
 	logPath     string
 	reportPath  string
 	ffmpegPath  string
@@ -48,6 +49,8 @@ type convertOptions struct {
 
 	recursive    bool
 	deleteSource bool
+	verifyOutput bool
+	hashFiles    bool
 	dryRun       bool
 	faststart    bool
 	genpts       bool
@@ -77,12 +80,15 @@ func registerConvertFlags(fs *flag.FlagSet, opts *convertOptions) {
 	fs.StringVar(&opts.trimEnd, "trim-end", "", "")
 	fs.StringVar(&opts.overwrite, "overwrite", "", "")
 	fs.StringVar(&opts.aspect, "aspect", "", "")
+	fs.StringVar(&opts.archiveDir, "archive", "", "")
 	fs.StringVar(&opts.logPath, "log", "", "")
 	fs.StringVar(&opts.reportPath, "report", "", "")
 	fs.StringVar(&opts.ffmpegPath, "ffmpeg", "", "")
 	fs.StringVar(&opts.ffprobePath, "ffprobe", "", "")
 	fs.BoolVar(&opts.recursive, "recursive", false, "")
 	fs.BoolVar(&opts.deleteSource, "delete-source", false, "")
+	fs.BoolVar(&opts.verifyOutput, "verify-output", false, "")
+	fs.BoolVar(&opts.hashFiles, "hash-files", false, "")
 	fs.BoolVar(&opts.dryRun, "dry-run", false, "")
 	fs.BoolVar(&opts.faststart, "faststart", false, "")
 	fs.BoolVar(&opts.genpts, "genpts", false, "")
@@ -154,6 +160,15 @@ func resolveConvertOptions(fs *flag.FlagSet, opts *convertOptions) (config.Confi
 	}
 	if seen["aspect"] {
 		cfg.Aspect = opts.aspect
+	}
+	if seen["archive"] {
+		cfg.ArchiveDir = opts.archiveDir
+	}
+	if seen["verify-output"] {
+		cfg.VerifyOutput = opts.verifyOutput
+	}
+	if seen["hash-files"] {
+		cfg.HashFiles = opts.hashFiles
 	}
 	if seen["delete-source"] {
 		cfg.DeleteSource = opts.deleteSource
@@ -450,6 +465,9 @@ func (r *renderer) printSummary(snapshot *engine.RunSnapshot) {
 	}
 	if snapshot.Canceled > 0 {
 		parts = append(parts, r.style.Gray(fmt.Sprintf("%d cancelled", snapshot.Canceled)))
+	}
+	if snapshot.Verified > 0 {
+		parts = append(parts, r.style.Cyan(fmt.Sprintf("%d verified", snapshot.Verified)))
 	}
 	elapsed := time.Since(snapshot.StartedAt)
 	if snapshot.FinishedAt != nil {

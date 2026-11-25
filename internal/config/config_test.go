@@ -19,6 +19,9 @@ func TestDefaultIsValid(t *testing.T) {
 	if cfg.AudioTracks != "all" {
 		t.Fatalf("audioTracks default = %q, want all", cfg.AudioTracks)
 	}
+	if !cfg.VerifyOutput {
+		t.Fatal("verifyOutput should default to true")
+	}
 	if cfg.Format != "mp4" || cfg.Mode != ModeRemux {
 		t.Fatalf("unexpected defaults: mode=%s format=%s", cfg.Mode, cfg.Format)
 	}
@@ -64,6 +67,8 @@ func TestValidateRejectsBadValues(t *testing.T) {
 		{"audio language", func(c *Config) { c.AudioTracks = "preferred"; c.AudioLanguage = "arabic" }, "audioLanguage"},
 		{"trim start", func(c *Config) { c.TrimStart = "1:70" }, "trimStart"},
 		{"trim end order", func(c *Config) { c.TrimStart = "10"; c.TrimEnd = "5" }, "trimEnd must be later"},
+		{"archive and delete", func(c *Config) { c.ArchiveDir = "archive"; c.DeleteSource = true }, "mutually exclusive"},
+		{"rename archive", func(c *Config) { c.Mode = ModeRename; c.Format = "ts"; c.ArchiveDir = "archive" }, "not supported in rename"},
 		{"aspect", func(c *Config) { c.Aspect = "wide" }, "aspect must"},
 	}
 	for _, test := range tests {
@@ -99,6 +104,29 @@ func TestLoadPartialKeepsDefaults(t *testing.T) {
 	}
 	if len(cfg.Extensions) != 1 || cfg.Extensions[0] != "mkv" {
 		t.Fatalf("extensions = %v", cfg.Extensions)
+	}
+	if !cfg.VerifyOutput {
+		t.Fatal("verifyOutput should default to true when the file omits it")
+	}
+	if cfg.HashFiles {
+		t.Fatal("hashFiles should default to false")
+	}
+}
+
+func TestLoadKeepsExplicitFalse(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "ffbatch.json")
+	if err := os.WriteFile(path, []byte(`{"verifyOutput":false,"hashFiles":true}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.VerifyOutput {
+		t.Fatal("explicit verifyOutput=false was ignored")
+	}
+	if !cfg.HashFiles {
+		t.Fatal("explicit hashFiles=true was ignored")
 	}
 }
 

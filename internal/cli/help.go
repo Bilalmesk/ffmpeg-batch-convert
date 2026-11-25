@@ -15,6 +15,7 @@ Commands:
   probe      Inspect streams, duration and size of one file
   serve      Open the local web dashboard
   doctor     Verify FFmpeg, encoders, config and output folders
+  verify     Check outputs against a report manifest (size + SHA-256)
   config     Show, create or validate ffbatch.json
   version    Print build information
 
@@ -24,6 +25,7 @@ Examples:
   ffbatch encode "D:\Recordings" --crf 20 --preset slow --delete-source
   ffbatch remux movie.ts --to mp4 --genpts
   ffbatch rename "D:\Shows" --to ts
+  ffbatch verify --manifest "D:\Reports\batch.json"
   ffbatch serve
 
 Run "ffbatch help <command>" for all flags.
@@ -53,7 +55,10 @@ Flags:
   --ext LIST                   Comma-separated source extensions
   --workers N                  Parallel FFmpeg processes (default: up to 4)
   --overwrite POLICY           skip | overwrite | number | fail (default: skip)
-  --delete-source              Delete the original after a successful job
+  --delete-source              Delete the original after a verified job
+  --archive DIR                Move the original into DIR after a verified job
+  --verify-output[=false]      Probe outputs before they replace anything (default: on)
+  --hash-files                 Record SHA-256 for sources and outputs
   --dry-run                    Print the planned commands without writing files
 
 Video:
@@ -106,9 +111,10 @@ Watcher flags:
   --existing           Also convert files that are already in the folder
 
 All convert flags are available, including:
-  --recursive, --output, --mode, --to, --workers, --overwrite,
-  --delete-source, --codec, --crf, --preset, --audio, --audio-tracks,
-  --audio-lang, --subs, --trim-start, --trim-end, --dry-run, --report, --log
+  --recursive, --output, --archive, --mode, --to, --workers, --overwrite,
+  --delete-source, --verify-output, --hash-files, --codec, --crf, --preset,
+  --audio, --audio-tracks, --audio-lang, --subs, --trim-start, --trim-end,
+  --dry-run, --report, --log
 
 Watchers run until Ctrl+C. Overlapping folders are rejected, output folders are
 ignored, and files already in the target format are skipped.
@@ -158,17 +164,25 @@ Usage:
 Flags:
   --host ADDRESS       Bind address (default: 127.0.0.1)
   --port PORT          HTTP port (default: 8737, 0 picks a free port)
+  --token SECRET       Require this shared secret (or set FFBATCH_TOKEN)
+  --insecure           Allow a non-loopback bind without a token
   --watch-interval N   Folder scan interval in seconds (default: 5)
   --watch-settle N     File stability window in seconds (default: 10)
   --open               Open the dashboard in the default browser
   --config FILE        Use a specific ffbatch.json
   --no-color           Disable ANSI colours
 
-The server only listens on the loopback interface unless you change --host.
+The server listens on loopback only unless you change --host. A non-loopback
+bind requires --token (at least 16 characters) unless you pass --insecure.
+Open the printed URL with ?token=SECRET once; the server sets an HttpOnly
+cookie and redirects to the clean URL. API clients may instead send
+"Authorization: Bearer SECRET" or "X-FFBatch-Token: SECRET".
+
 Press Ctrl+C to stop it.
 
 Example:
   ffbatch serve --open
+  ffbatch serve --host 0.0.0.0 --token "a-long-random-secret"
 `
 
 const doctorUsage = `Check the local FFmpeg setup and configuration.
@@ -183,6 +197,31 @@ Flags:
 
 Example:
   ffbatch doctor
+`
+
+const verifyUsage = `Check outputs against a run report.
+
+Usage:
+  ffbatch verify --manifest REPORT.json [--json]
+  ffbatch verify FILE [FILE...] [--json]
+
+Manifest mode checks every completed job in a JSON report: the file must exist,
+its size must match, and its SHA-256 must match the recorded output hash. If the
+report contains a source hash, the original or archived source is checked too.
+
+File mode probes each file with ffprobe to confirm it is readable media.
+
+Flags:
+  --manifest FILE      JSON report written by --report
+  --json               Print results as JSON
+  --config FILE        Use a specific ffbatch.json
+  --no-color           Disable ANSI colours
+
+Exit code is 0 when everything passes or is skipped, 1 on any failure.
+
+Examples:
+  ffbatch verify --manifest ffbatch-20260101-120000.json
+  ffbatch verify episode.mp4
 `
 
 const configUsage = `Inspect or create ffbatch.json.
