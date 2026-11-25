@@ -1,5 +1,5 @@
 BINARY := dist/ffbatch$(shell go env GOEXE)
-VERSION ?= 0.3.0
+VERSION ?= 0.3.1
 COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo none)
 DATE ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 PKG := github.com/Bilalmesk/ffmpeg-batch-convert/internal/version
