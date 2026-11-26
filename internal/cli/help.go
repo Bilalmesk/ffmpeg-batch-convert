@@ -22,6 +22,7 @@ Commands:
   package    Package a file as HLS or DASH
   fetch      Download media with yt-dlp
   audio      Extract or convert audio tracks
+  workflow   Run multi-step probe/convert/quality/mux/package recipes
   config     Show, create or validate ffbatch.json
   version    Print build information
 
@@ -34,6 +35,7 @@ Examples:
   ffbatch verify --manifest "D:\Reports\batch.json"
   ffbatch quality --reference source.mp4 --candidate encode.mp4
   ffbatch audio "D:\Recordings" --recursive --format flac
+  ffbatch workflow run multi-delivery --input "D:\master.mov" --output "D:\Delivery"
   ffbatch tools
   ffbatch serve
 
@@ -392,6 +394,50 @@ Examples:
   ffbatch audio "D:\Recordings" --recursive --format flac --output "D:\Audio"
   ffbatch audio interview.mkv --format opus --bitrate 96k --normalize
   ffbatch audio "D:\Music" --format mp3 --overwrite
+`
+
+const workflowUsage = `Run safe, multi-step media workflows.
+
+Usage:
+  ffbatch workflow list [--json]
+  ffbatch workflow show NAME|FILE
+  ffbatch workflow init NAME [--output FILE] [--force]
+  ffbatch workflow run NAME|FILE --input FILE [flags]
+
+Run flags:
+  --input FILE         Source file (required)
+  --output DIR         Final output folder (default: next to the source)
+  --work DIR           Work folder for intermediate files
+  --overwrite          Replace existing outputs
+  --keep-work          Keep the intermediate work folder
+  --var KEY=VALUE,...  Override workflow context variables
+  --json               Print the run report as JSON
+  --config FILE        Use a specific ffbatch.json
+  --no-color           Disable ANSI colours
+
+Built-in workflows:
+  ts-repair        Regenerate timestamps, remux to MP4, verify and hash
+  av1-quality      AV1 encode + VMAF gate + verified delivery copy
+  mkv-preserve     MKVToolNix mux with chapters/tracks/tags preserved
+  hls-delivery     H.264/AAC mezzanine + HLS package
+  dash-delivery    H.264/AAC mezzanine + DASH package
+  audio-delivery   Normalized FLAC audio extraction
+  multi-delivery   H.264 MP4 + AV1 + VMAF gate + FLAC from one input
+
+Workflows are JSON files. Start from a built-in with:
+  ffbatch workflow init multi-delivery
+Then edit the steps and run the file:
+  ffbatch workflow run multi-delivery.json --input "D:\show.mkv" --output "D:\Delivery"
+
+Every step is a typed operation (probe, convert, quality, mux, package, audio,
+copy, delete). No shell is involved. The convert step uses the same verification,
+SHA-256 and archive-safe commit logic as the batch engine.
+
+Examples:
+  ffbatch workflow list
+  ffbatch workflow run ts-repair --input "D:\recording.ts" --output "D:\Fixed"
+  ffbatch workflow run av1-quality --input "D:\source.mkv" --output "D:\AV1"
+  ffbatch workflow run multi-delivery --input "D:\master.mov" --output "D:\Delivery"
 `
 
 const configUsage = `Inspect or create ffbatch.json.

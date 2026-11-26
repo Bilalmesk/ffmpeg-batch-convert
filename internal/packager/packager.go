@@ -200,7 +200,7 @@ func buildBento4(input, outputDir string, req Request) (Plan, error) {
 
 // CommandString renders a plan command for display.
 func CommandString(command Command) string {
-	parts := make([]string, 0, len(command.Args)+1)
+	parts := make([]string, 0, len(command.Args))
 	parts = append(parts, quote(command.Binary))
 	for _, arg := range command.Args {
 		parts = append(parts, quote(arg))

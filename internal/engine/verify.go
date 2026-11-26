@@ -13,6 +13,12 @@ import (
 	"github.com/Bilalmesk/ffmpeg-batch-convert/internal/units"
 )
 
+// VerifyOutput validates a temporary output before it is committed. Workflow
+// steps use this to get the same protection as the batch engine.
+func VerifyOutput(ctx context.Context, tool ffmpeg.Tool, cfg config.Config, source *mediainfo.Info, temp string) error {
+	return verifyOutput(ctx, tool, cfg, source, temp)
+}
+
 // verifyOutput probes the temporary output and rejects truncated or
 // structurally incompatible files before they can replace a real output.
 func verifyOutput(ctx context.Context, tool ffmpeg.Tool, cfg config.Config, source *mediainfo.Info, temp string) error {

@@ -16,7 +16,10 @@ that way is part of the design.
   `ffmpeg` is absent.
 - **Never silently weaken a safety check.** Verification, hashing and archive
   paths are covered by focused tests; add cases for new failure modes.
-- **Update `docs/API.md`** when an endpoint, event or job field changes.
+- **Update `docs/API.md`** when an endpoint or event changes, and
+  `docs/WORKFLOWS.md` when a step type or built-in workflow changes.
+- **Workflow steps are typed operations.** Do not add a generic shell/exec step;
+  new capabilities belong in a typed handler with validation.
 
 ## Local workflow
 
@@ -39,9 +42,9 @@ Every pull request runs formatting, `go vet`, the unit/HTTP suite, `govulncheck`
 a full build on Windows and Ubuntu, CodeQL analysis, and an end-to-end FFmpeg
 conversion smoke test on Ubuntu that also verifies hashes and rejects a tampered
 file. Tests cover AV1 argv, VMAF/SSIM/PSNR parsing, MKVToolNix muxing, HLS/DASH
-packaging and yt-dlp arguments. Integration tests skip when their optional tool
-is not installed. Release tags run the same CI matrix before GoReleaser publishes
-archives.
+packaging, yt-dlp arguments, audio extraction and multi-step workflows.
+Integration tests skip when their optional tool is not installed. Release tags
+run the same CI matrix before GoReleaser publishes archives.
 
 ## Pull requests
 

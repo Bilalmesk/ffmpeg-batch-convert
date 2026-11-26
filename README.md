@@ -26,6 +26,7 @@ FFBatch keeps the useful part — FFmpeg — and wraps it in a proper tool:
 - **Stream-aware planning**: picks the real video stream (not cover art), converts text subtitles to `mov_text` for MP4, skips bitmap subtitles with a warning, and falls back to AAC when copied audio would not play.
 - **AV1, H.264 and H.265** encoding, plus MKVToolNix, MP4Box/Bento4, yt-dlp and VMAF integrations when those optional tools are installed.
 - **Audio extraction** to FLAC, Opus, MP3, M4A or WAV, with optional loudness normalization.
+- **Multi-step workflows** that chain probe, convert, quality gates, MKV muxing, HLS/DASH packaging, audio and copy/delete into repeatable recipes.
 - **Reports** in JSON and CSV, optional text logs.
 - **A Doctor** that checks FFmpeg, encoders, configuration and write access.
 - **Zero runtime dependencies** other than FFmpeg and FFprobe. The dashboard is embedded in the binary with `go:embed`; no Node.js, no browser download, no telemetry.
@@ -150,6 +151,9 @@ ffbatch fetch "https://example.com/video" --output "D:\Incoming"
 # Extract audio to FLAC/Opus/MP3/M4A/WAV
 ffbatch audio "D:\Recordings" --recursive --format flac --output "D:\Audio"
 
+# Chain multiple tools into one workflow
+ffbatch workflow run multi-delivery --input "D:\master.mov" --output "D:\Delivery"
+
 # Extension-only rename, no media processing
 ffbatch rename "D:\Shows" --to ts
 
@@ -188,6 +192,7 @@ Flags may appear before or after paths: `ffbatch convert folder --recursive` and
 | `ffbatch package` | Package HLS or DASH with FFmpeg, MP4Box or Bento4. |
 | `ffbatch fetch` | Download media with yt-dlp. |
 | `ffbatch audio` | Extract or convert audio to FLAC/Opus/MP3/M4A/WAV. |
+| `ffbatch workflow` | Run multi-step probe/convert/quality/mux/package recipes. |
 | `ffbatch config` | `show`, `path`, `init`, `validate`. |
 | `ffbatch version` | Build, commit, date and Go runtime. |
 
@@ -373,6 +378,30 @@ to a Go batch converter would duplicate FFmpeg, bloat the binary and weaken the
 single-binary model. [docs/TOOLCHAIN.md](docs/TOOLCHAIN.md) explains each choice
 and the roadmap (ab-av1 tuning, audio mode, Av1an, VapourSynth presets).
 
+## Workflows
+
+Some media problems need more than one tool: decode/repair, encode twice, measure quality, mux, package, extract audio, then copy or archive. Workflows make that repeatable without a shell script.
+
+```powershell
+ffbatch workflow list
+ffbatch workflow run ts-repair --input "D:\recording.ts" --output "D:\Fixed"
+ffbatch workflow run multi-delivery --input "D:\master.mov" --output "D:\Delivery"
+```
+
+| Workflow | Chain |
+| --- | --- |
+| `ts-repair` | probe → remux with genpts → verify → SHA-256 |
+| `av1-quality` | probe → AV1 encode → VMAF ≥90 → copy |
+| `mkv-preserve` | probe → MKVToolNix mux (tracks/chapters/tags) |
+| `hls-delivery` | probe → H.264/AAC mezzanine → HLS |
+| `dash-delivery` | probe → H.264/AAC mezzanine → DASH |
+| `audio-delivery` | probe → FLAC + loudness normalization |
+| `multi-delivery` | H.264 MP4 + AV1 + VMAF gate + FLAC |
+
+`ffbatch workflow init multi-delivery` writes an editable JSON file. Steps are typed (`probe`, `convert`, `quality`, `mux`, `package`, `audio`, `copy`, `delete`), can be conditional, can retry, and use templates such as `{{input}}`, `{{base}}`, `{{work}}`, `{{outputDir}}`, `{{steps.encode.output}}` and `{{steps.quality.score}}`. No shell is involved.
+
+The full schema, conditions, parameters and safety rules are in [`docs/WORKFLOWS.md`](docs/WORKFLOWS.md).
+
 ## Recipes
 
 | Recipe | Mode | Key settings |
@@ -489,6 +518,7 @@ internal/
   packager/   HLS/DASH plans for FFmpeg, MP4Box and Bento4
   quality/    VMAF, SSIM and PSNR measurement
   toolchain/  optional tool detection, versions and hints
+  workflow/   typed multi-step pipelines, conditions and built-in recipes
   term/       ANSI styling + Windows virtual terminal
   units/      human-readable sizes and durations
   version/    build metadata
@@ -507,11 +537,11 @@ go build -o dist/ffbatch.exe .
 
 The UI is plain HTML/CSS/ES2020 with no build step. Assets live in `internal/web/assets/` and are embedded with `go:embed`; rebuild the binary after editing them.
 
-More detail: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), [`docs/API.md`](docs/API.md) and [`docs/TOOLCHAIN.md`](docs/TOOLCHAIN.md).
+More detail: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), [`docs/API.md`](docs/API.md), [`docs/TOOLCHAIN.md`](docs/TOOLCHAIN.md) and [`docs/WORKFLOWS.md`](docs/WORKFLOWS.md).
 
 ### Release
 
-Tag a commit (`v0.4.0`) and push it. GitHub Actions runs tests and GoReleaser builds Windows, macOS and Linux archives with checksums. It then generates an SPDX SBOM and signed build-provenance/SBOM attestations for the archives. See [`.goreleaser.yaml`](.goreleaser.yaml).
+Tag a commit (`v0.5.0`) and push it. GitHub Actions runs tests and GoReleaser builds Windows, macOS and Linux archives with checksums. It then generates an SPDX SBOM and signed build-provenance/SBOM attestations for the archives. See [`.goreleaser.yaml`](.goreleaser.yaml).
 
 ## Troubleshooting
 
@@ -550,8 +580,8 @@ Every pull request runs CI on **Windows and Ubuntu**: `gofmt`, `go vet`,
 `go test ./...`, a full build, `govulncheck`, and an end-to-end FFmpeg smoke
 conversion that also exercises hashing, verification and tamper rejection on
 Ubuntu. Tests cover AV1 argv planning, audio extraction, MKV muxing, HLS/DASH
-packaging, quality metrics and yt-dlp argument construction. CodeQL analyzes the
-Go code on every push and pull request. Pushing a `v*` tag runs the same CI matrix before
+packaging, quality metrics, yt-dlp argument construction and multi-step workflow
+execution. CodeQL analyzes the Go code on every push and pull request. Pushing a `v*` tag runs the same CI matrix before
 GoReleaser builds the Windows, macOS and Linux archives and publishes the GitHub
 release.
 

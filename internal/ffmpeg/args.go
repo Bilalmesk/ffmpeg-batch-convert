@@ -310,7 +310,7 @@ func incompatibleAudioCodecs(streams []mediainfo.Stream) []string {
 
 // CommandString renders an argv for display and logs.
 func CommandString(binary string, args []string) string {
-	parts := make([]string, 0, len(args)+1)
+	parts := make([]string, 0, len(args))
 	parts = append(parts, quoteArg(binary))
 	for _, arg := range args {
 		parts = append(parts, quoteArg(arg))
