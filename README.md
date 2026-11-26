@@ -9,6 +9,14 @@
 
 **Jump to:** [What it handles](#what-it-handles) · [Install](#install) · [CLI](#quick-start-with-the-cli) · [Workflows](#quick-start-with-workflows) · [Pro toolchain](#pro-toolchain) · [Safety](#safety-model) · [Configuration](#configuration) · [Troubleshooting](#troubleshooting)
 
+<p align="center">
+  <img src="docs/morocco.svg" width="170" alt="Map of Morocco including its Sahara">
+  <br>
+  <sub>Morocco — including its Sahara</sub>
+  <br>
+  <sub>Map derived from <a href="https://commons.wikimedia.org/wiki/File:LocationMorocco3.svg">Wikimedia Commons</a> · CC BY-SA 3.0</sub>
+</p>
+
 ![Convert dashboard](docs/dashboard-convert.png)
 
 ## Why this exists
