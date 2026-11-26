@@ -65,7 +65,7 @@ jobs:
         run: go test ./internal/engine -run TestPipeline -v
 
       - name: Toolchain integration tests
-        run: go test ./internal/audio ./internal/quality ./internal/muxer ./internal/packager -v
+        run: go test ./internal/audio ./internal/quality ./internal/muxer ./internal/packager ./internal/workflow -v
 
       - name: Convert, hash and verify a generated clip
         shell: bash

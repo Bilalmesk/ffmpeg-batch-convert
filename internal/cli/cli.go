@@ -66,6 +66,8 @@ func Run(args []string) int {
 		return cmdFetch(rest, style)
 	case "audio":
 		return cmdAudio(rest, style)
+	case "workflow", "wf":
+		return cmdWorkflow(rest, style)
 	case "verify":
 		return cmdVerify(rest, style)
 	case "config":
@@ -211,6 +213,8 @@ func printCommandHelp(command string, style term.Style) int {
 		fmt.Print(fetchUsage)
 	case "audio":
 		fmt.Print(audioUsage)
+	case "workflow", "wf":
+		fmt.Print(workflowUsage)
 	case "verify":
 		fmt.Print(verifyUsage)
 	case "config":

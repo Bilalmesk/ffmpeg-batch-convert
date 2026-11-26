@@ -30,6 +30,11 @@ Run `ffbatch tools` to see what is installed. Paths can be overridden per tool i
 | SSIM/PSNR (FFmpeg filters) | `ffbatch quality --metric ssim/psnr` | Signal-fidelity checks that work on every FFmpeg build |
 | libsvtav1 / libaom-av1 / librav1e (FFmpeg encoders) | `ffbatch encode --codec av1` | AV1 encoding through the normal verified pipeline |
 
+All of these capabilities are also available as typed steps in
+`ffbatch workflow` (`probe`, `convert`, `quality`, `mux`, `package`, `audio`,
+`copy`, `delete`). See [WORKFLOWS.md](WORKFLOWS.md) for multi-tool recipes such
+as `multi-delivery`.
+
 | `ffbatch audio` | FFmpeg | Extract one audio track to FLAC, Opus, MP3, M4A or WAV with optional loudness normalization |
 
 ### Examples
@@ -94,9 +99,7 @@ If you need these in a larger system, treat FFBatch as the batch/verification
 stage and call it from Python, Node or a workflow engine. The CLI and JSON
 reports are the integration surface.
 
-## Safe external-tool rules
-
-- Optional tools are only used by the command that needs them. `ffbatch convert`
+## Safe external-tool rules- Optional tools are only used by the command that needs them. `ffbatch convert`
   never depends on mkvmerge, MP4Box, Bento4 or yt-dlp.
 - Every process is started with an argv array, never through a shell.
 - Output paths are created and validated before a command runs.

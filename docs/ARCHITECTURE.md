@@ -33,6 +33,7 @@ cmd/ffbatch/main.go      go-install entry point
              ├── packager
              ├── quality
              ├── toolchain
+             ├── workflow
              ├── ytdlp
              ├── term
              └── version
@@ -190,6 +191,27 @@ The optional integrations are deliberately outside the engine:
 No package imports `cli` or `web`. Optional tools are only executed by the
 commands that need them; `convert` still works with FFmpeg alone.
 
+## Workflows
+
+`internal/workflow` is a sequential, typed pipeline engine. A workflow is JSON,
+validated with `DisallowUnknownFields`, and each step is one of `probe`,
+`convert`, `quality`, `mux`, `package`, `audio`, `copy` or `delete`. There is no
+shell step.
+
+- The engine builds a context from `input`, `base`, `ext`, `work`, `outputDir`,
+  `probe.*` and `steps.ID.*`, resolves `{{...}}` templates recursively and
+  evaluates structured conditions.
+- `convert` reuses `ffmpeg.Build`, `engine.VerifyOutput`, the same SHA-256 helper
+  and an atomic commit, so workflow outputs get the same guarantees as batch
+  outputs.
+- `mux`, `package` and `audio` reuse the same command builders as the standalone
+  commands; `package` runs FFmpeg DASH with its working directory set to the
+  output folder so segment templates stay next to the manifest.
+- Work happens in a temporary directory that is removed unless `--keep-work` is
+  set. Cross-volume copies are fsynced and size-checked before rename.
+- Built-in workflows live in `builtins.go`; users can `init` a copy and edit the
+  JSON without recompiling.
+
 ## Trusted pipeline
 
 The verification, hashing and archive logic lives in `engine/verify.go` and
@@ -279,3 +301,6 @@ own config; it is validated, used for that run, and optionally persisted.
   tests run real muxing/packaging when those tools are installed.
 - Audio tests cover format/bitrate/normalization argv and a real FLAC extraction
   that probes the result with `ProbeAny`.
+- Workflow tests cover strict parsing, templates, conditions, built-in validation
+  and real runs for `ts-repair`, `mkv-preserve`, `hls-delivery`, audio extraction
+  and AV1 → SSIM gate → copy.

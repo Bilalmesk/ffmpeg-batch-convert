@@ -2,6 +2,8 @@
 
 The dashboard is a single-page app over a small JSON API. All endpoints are
 served from the same origin as the UI (default `http://127.0.0.1:8737`).
+Multi-step workflows are currently a CLI feature (`ffbatch workflow`); see
+[WORKFLOWS.md](WORKFLOWS.md).
 
 ## Security rules
 
@@ -28,7 +30,7 @@ served from the same origin as the UI (default `http://127.0.0.1:8737`).
 
 ```json
 {
-  "version": "0.4.0",
+  "version": "0.5.0",
   "commit": "abc1234",
   "platform": "windows/amd64",
   "go": "go1.24.0",
@@ -318,7 +320,7 @@ Runs the same checks as `ffbatch doctor`:
 ```json
 {
   "generatedAt": "...",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "platform": "windows/amd64",
   "goVersion": "go1.24.0",
   "cpus": 8,

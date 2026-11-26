@@ -51,5 +51,8 @@ window for a fix before public disclosure.
 - Optional tools (MKVToolNix, MP4Box, Bento4, yt-dlp, aria2c) are invoked with an
   argv array, never through a shell. Report any path or argument that could be
   interpreted as a command.
+- Workflow JSON is trusted input. A workflow can copy or delete paths you give it;
+  only run workflows you understand. New workflow step types should be validated
+  and must not add a generic shell-execution step.
 - `ffbatch fetch` passes user-supplied URLs to yt-dlp. This can make network
   requests; only fetch content you are allowed to download.

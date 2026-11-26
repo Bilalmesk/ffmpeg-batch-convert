@@ -4,6 +4,33 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [0.5.0] - 2026-11-26
+
+### Added
+
+- **Multi-step workflow engine** (`ffbatch workflow`) with typed steps: `probe`,
+  `convert`, `quality`, `mux`, `package`, `audio`, `copy` and `delete`.
+- **Built-in mashup workflows**: `ts-repair`, `av1-quality`, `mkv-preserve`,
+  `hls-delivery`, `dash-delivery`, `audio-delivery` and `multi-delivery`.
+- **Workflow document format** with schema validation, `{{input}}`/`{{base}}`/
+  `{{work}}`/`{{steps.ID.output}}` templates, structured conditions
+  (`equals`, `in`, `contains`, `exists`, `greaterThan`, `all`/`any`/`not`),
+  per-step retries and `onError: continue`.
+- **`ffbatch workflow list|show|init|run`**, `--json` reports, editable JSON
+  recipes and a per-run work directory.
+- Exported `engine.VerifyOutput` so workflow conversions use the same truncation,
+  codec, resolution and audio-track checks as the batch engine.
+- `docs/WORKFLOWS.md` with the schema, step reference, templates, conditions,
+  safety rules and examples.
+
+### Changed
+
+- Workflow `convert`, `mux` and `audio` steps write temporary files and commit
+  atomically, with the same overwrite and cross-volume copy protections as the
+  batch engine.
+- `multi-delivery` produces H.264 MP4, AV1 with a VMAF gate, and normalized FLAC
+  from one input in one command.
+
 ## [0.4.0] - 2026-11-26
 
 ### Added
