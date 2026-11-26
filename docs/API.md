@@ -28,7 +28,7 @@ served from the same origin as the UI (default `http://127.0.0.1:8737`).
 
 ```json
 {
-  "version": "0.3.0",
+  "version": "0.4.0",
   "commit": "abc1234",
   "platform": "windows/amd64",
   "go": "go1.24.0",
@@ -54,9 +54,11 @@ served from the same origin as the UI (default `http://127.0.0.1:8737`).
 
 Returns `{config, configPath, recipes, formats, presets}`. Security and
 chain-of-custody fields include `archiveDir` (mutually exclusive with
-`deleteSource`), `verifyOutput` (default `true`) and `hashFiles`. Audio fields
-include `audioTracks` (`all|first|preferred`), `audioLanguage`, `trimStart` and
-`trimEnd`.
+`deleteSource`), `verifyOutput` (default `true`) and `hashFiles`. Video fields
+include `videoCodec` (`h264|h265|av1`), `av1Encoder` (`svt|aom|rav1e`) and
+`preset`. `tools` maps optional tool IDs to explicit executable paths. Audio
+fields include `audioTracks` (`all|first|preferred`), `audioLanguage`,
+`trimStart` and `trimEnd`.
 
 ### `PUT /api/config`
 
@@ -70,7 +72,8 @@ active config path. Returns `{config, configPath, saved}`.
 ### `GET /api/capabilities`
 
 Lists supported formats, presets, default extensions, modes, overwrite and
-codec policies, and recipes. Useful for clients other than the bundled UI.
+codec policies, AV1 encoders, and recipes. Useful for clients other than the
+bundled UI.
 
 ## Scanning and the file system
 
@@ -315,7 +318,7 @@ Runs the same checks as `ffbatch doctor`:
 ```json
 {
   "generatedAt": "...",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "platform": "windows/amd64",
   "goVersion": "go1.24.0",
   "cpus": 8,

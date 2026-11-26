@@ -54,6 +54,18 @@ func Run(args []string) int {
 		return cmdServe(rest, style)
 	case "doctor", "check":
 		return cmdDoctor(rest, style)
+	case "tools":
+		return cmdTools(rest, style)
+	case "quality", "qc":
+		return cmdQuality(rest, style)
+	case "mux":
+		return cmdMux(rest, style)
+	case "package", "pack":
+		return cmdPackage(rest, style)
+	case "fetch", "download":
+		return cmdFetch(rest, style)
+	case "audio":
+		return cmdAudio(rest, style)
 	case "verify":
 		return cmdVerify(rest, style)
 	case "config":
@@ -187,6 +199,18 @@ func printCommandHelp(command string, style term.Style) int {
 		fmt.Print(serveUsage)
 	case "doctor", "check":
 		fmt.Print(doctorUsage)
+	case "tools":
+		fmt.Print(toolsUsage)
+	case "quality", "qc":
+		fmt.Print(qualityUsage)
+	case "mux":
+		fmt.Print(muxUsage)
+	case "package", "pack":
+		fmt.Print(packageUsage)
+	case "fetch", "download":
+		fmt.Print(fetchUsage)
+	case "audio":
+		fmt.Print(audioUsage)
 	case "verify":
 		fmt.Print(verifyUsage)
 	case "config":

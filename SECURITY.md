@@ -10,7 +10,8 @@ Security fixes are provided for the latest released minor version.
 
 | Version | Supported |
 | --- | --- |
-| 0.3.x | ✅ |
+| 0.4.x | ✅ |
+| 0.3.x | Security fixes only |
 | 0.2.x | Security fixes only |
 | < 0.2 | ❌ |
 
@@ -47,3 +48,8 @@ window for a fix before public disclosure.
   not HTTPS; use a VPN, SSH tunnel or trusted network for sensitive media.
 - Media files are untrusted input. Report crashes or unexpected command
   construction, not the media content itself.
+- Optional tools (MKVToolNix, MP4Box, Bento4, yt-dlp, aria2c) are invoked with an
+  argv array, never through a shell. Report any path or argument that could be
+  interpreted as a command.
+- `ffbatch fetch` passes user-supplied URLs to yt-dlp. This can make network
+  requests; only fetch content you are allowed to download.

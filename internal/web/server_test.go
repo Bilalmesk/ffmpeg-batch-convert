@@ -90,6 +90,27 @@ func TestStatusAndConfig(t *testing.T) {
 	}
 }
 
+func TestCapabilitiesIncludesAV1(t *testing.T) {
+	server, _ := testServer(t)
+	rec := request(t, server.Handler(), http.MethodGet, "/api/capabilities", nil, "")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d", rec.Code)
+	}
+	var payload struct {
+		VideoCodecs []string `json:"videoCodecs"`
+		AV1Encoders []string `json:"av1Encoders"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
+		t.Fatal(err)
+	}
+	if len(payload.VideoCodecs) == 0 || payload.VideoCodecs[len(payload.VideoCodecs)-1] != "av1" {
+		t.Fatalf("video codecs = %v", payload.VideoCodecs)
+	}
+	if len(payload.AV1Encoders) != 3 {
+		t.Fatalf("av1 encoders = %v", payload.AV1Encoders)
+	}
+}
+
 func TestStaticIndex(t *testing.T) {
 	server, _ := testServer(t)
 	rec := request(t, server.Handler(), http.MethodGet, "/", nil, "")

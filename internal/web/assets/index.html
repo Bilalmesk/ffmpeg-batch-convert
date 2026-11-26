@@ -337,6 +337,16 @@
                       <select id="videoCodec">
                         <option value="h264">H.264 — universal</option>
                         <option value="h265">H.265 / HEVC — smaller</option>
+                        <option value="av1">AV1 — smallest, newest</option>
+                      </select>
+                    </div>
+
+                    <div class="field" id="av1EncoderField" hidden>
+                      <label for="av1Encoder">AV1 encoder</label>
+                      <select id="av1Encoder">
+                        <option value="svt">SVT-AV1 — fastest</option>
+                        <option value="aom">libaom — reference</option>
+                        <option value="rav1e">rav1e — Rust</option>
                       </select>
                     </div>
 

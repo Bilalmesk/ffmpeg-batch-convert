@@ -6,6 +6,9 @@ that way is part of the design.
 ## Ground rules
 
 - **Go standard library only.** New modules need a very good reason.
+- **Optional tools are opt-in.** MKVToolNix, MP4Box, Bento4, yt-dlp and other
+  executables are detected at runtime and used only by their command. Core
+  conversion must keep working with FFmpeg alone.
 - **No UI build step.** The dashboard is HTML, CSS and ES2020 in
   `internal/web/assets/`. Rebuild the binary to refresh the embedded copy.
 - **Test the engine, not FFmpeg.** The default test suite must pass on a machine
@@ -35,7 +38,10 @@ are still growing.
 Every pull request runs formatting, `go vet`, the unit/HTTP suite, `govulncheck`,
 a full build on Windows and Ubuntu, CodeQL analysis, and an end-to-end FFmpeg
 conversion smoke test on Ubuntu that also verifies hashes and rejects a tampered
-file. Release tags run the same CI matrix before GoReleaser publishes archives.
+file. Tests cover AV1 argv, VMAF/SSIM/PSNR parsing, MKVToolNix muxing, HLS/DASH
+packaging and yt-dlp arguments. Integration tests skip when their optional tool
+is not installed. Release tags run the same CI matrix before GoReleaser publishes
+archives.
 
 ## Pull requests
 

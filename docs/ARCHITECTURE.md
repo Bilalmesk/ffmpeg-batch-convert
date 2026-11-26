@@ -27,7 +27,13 @@ cmd/ffbatch/main.go      go-install entry point
              │    ├── watch
              │    └── config
              ├── ffmpeg
+             ├── audio
              ├── hashutil
+             ├── muxer
+             ├── packager
+             ├── quality
+             ├── toolchain
+             ├── ytdlp
              ├── term
              └── version
 ```
@@ -163,6 +169,27 @@ The extension is preserved so FFmpeg can infer the muxer. On success:
 On failure or cancellation the temporary file is removed. Cross-device renames
 (in rename mode) fall back to copy + fsync + replace + size check + delete.
 
+## Pro toolchain
+
+The optional integrations are deliberately outside the engine:
+
+- `internal/toolchain` detects tools, versions, capabilities and install hints.
+  It only uses `exec.LookPath` and short `--version` calls.
+- `internal/muxer` builds MKVToolNix argv. It never runs a shell and does not
+  re-encode.
+- `internal/packager` builds HLS/DASH plans. FFmpeg is the default backend;
+  MP4Box and Bento4 are opt-in.
+- `internal/quality` runs FFmpeg filters (`libvmaf`, `ssim`, `psnr`) against a
+  reference and parses the result. VMAF writes its JSON log into a temporary
+  working directory so Windows paths never need filter escaping.
+- `internal/ytdlp` builds yt-dlp argv, including a persistent download archive.
+- `internal/audio` builds audio-only extraction commands and output paths.
+- AV1 is part of the normal `ffmpeg.Build` path and therefore inherits
+  verification, hashing, archiving and reports.
+
+No package imports `cli` or `web`. Optional tools are only executed by the
+commands that need them; `convert` still works with FFmpeg alone.
+
 ## Trusted pipeline
 
 The verification, hashing and archive logic lives in `engine/verify.go` and
@@ -200,6 +227,8 @@ suffix and a warning, regardless of policy.
 predictably. Loading starts from `Default()`, unmarshals over it, then
 normalises and validates. Validation is strict enough to catch typos in
 enums, CRF ranges, audio bitrate syntax, aspect ratios and extension lists.
+Video codecs are `h264`, `h265` and `av1`; AV1 CRF has its own 0–63 range.
+`Tools` maps optional tool IDs to explicit executable paths.
 
 The web server owns the mutable copy (`cfgMu`). A start request may carry its
 own config; it is validated, used for that run, and optionally persisted.
@@ -243,3 +272,10 @@ own config; it is validated, used for that run, and optionally persisted.
 - An optional end-to-end test generates a real clip with FFmpeg, converts it with
   verification and hashing forced on, archives the source and checks the report.
   It skips automatically when FFmpeg is not installed; CI runs it on Ubuntu.
+- AV1 tests cover SVT-AV1, libaom and rav1e argv plus the MP4 tag and TS warning.
+- Quality tests cover VMAF JSON parsing, SSIM/PSNR output parsing and a real
+  identical-clip measurement that skips when libvmaf is absent.
+- MKVToolNix, HLS/DASH and yt-dlp tests cover argv construction; integration
+  tests run real muxing/packaging when those tools are installed.
+- Audio tests cover format/bitrate/normalization argv and a real FLAC extraction
+  that probes the result with `ProbeAny`.

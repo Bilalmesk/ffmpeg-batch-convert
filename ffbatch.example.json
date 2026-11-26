@@ -29,6 +29,7 @@
   "aspect": "",
   "genPts": true,
   "videoCodec": "h264",
+  "av1Encoder": "svt",
   "crf": 22,
   "preset": "fast",
   "audioCodec": "copy",
@@ -38,5 +39,6 @@
   "subtitleCodec": "auto",
   "trimStart": "",
   "trimEnd": "",
-  "logFile": ""
+  "logFile": "",
+  "tools": {}
 }

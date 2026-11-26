@@ -41,8 +41,11 @@ func validateOutput(cfg config.Config, source, output *mediainfo.Info) error {
 			}
 		case config.ModeEncode:
 			expected := cfg.VideoCodec
-			if expected == "h265" {
+			switch expected {
+			case "h265":
 				expected = "hevc"
+			case "av1":
+				expected = "av1"
 			}
 			if !sameCodec(output.Video.Codec, expected) {
 				return fmt.Errorf("expected %s video, got %s", expected, output.Video.Codec)

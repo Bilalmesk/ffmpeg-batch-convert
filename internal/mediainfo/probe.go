@@ -64,8 +64,18 @@ type probeDoc struct {
 	} `json:"format"`
 }
 
-// Probe runs ffprobe and converts its JSON output into an Info value.
+// Probe runs ffprobe and converts its JSON output into an Info value. It
+// requires a video stream because the conversion planner is video-oriented.
 func Probe(ctx context.Context, ffprobe, path string) (*Info, error) {
+	return probe(ctx, ffprobe, path, true)
+}
+
+// ProbeAny is Probe without the video requirement, for audio-only outputs.
+func ProbeAny(ctx context.Context, ffprobe, path string) (*Info, error) {
+	return probe(ctx, ffprobe, path, false)
+}
+
+func probe(ctx context.Context, ffprobe, path string, requireVideo bool) (*Info, error) {
 	args := []string{
 		"-v", "error",
 		"-print_format", "json",
@@ -136,7 +146,7 @@ func Probe(ctx context.Context, ffprobe, path string) (*Info, error) {
 			info.DurationMs = parseSecondsToMs(raw.Duration)
 		}
 	}
-	if info.Video == nil {
+	if requireVideo && info.Video == nil {
 		return nil, errors.New("file has no video stream")
 	}
 	return info, nil

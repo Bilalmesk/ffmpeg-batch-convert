@@ -45,6 +45,12 @@ const (
 // SupportedFormats are the output containers the runner can target.
 var SupportedFormats = []string{"mp4", "mkv", "mov", "ts"}
 
+// SupportedVideoCodecs are the video codecs that encode mode can target.
+var SupportedVideoCodecs = []string{"h264", "h265", "av1"}
+
+// SupportedAV1Encoders are the AV1 implementations exposed through FFmpeg.
+var SupportedAV1Encoders = []string{"svt", "aom", "rav1e"}
+
 // SupportedPresets mirrors the x264/x265 preset names.
 var SupportedPresets = []string{
 	"ultrafast", "superfast", "veryfast", "faster", "fast",
@@ -93,6 +99,7 @@ type Config struct {
 	Aspect        string `json:"aspect"`
 	GenPTS        bool   `json:"genPts"`
 	VideoCodec    string `json:"videoCodec"`
+	AV1Encoder    string `json:"av1Encoder"`
 	CRF           int    `json:"crf"`
 	Preset        string `json:"preset"`
 	AudioCodec    string `json:"audioCodec"`
@@ -104,7 +111,8 @@ type Config struct {
 	TrimEnd       string `json:"trimEnd"`
 
 	// Diagnostics.
-	LogFile string `json:"logFile"`
+	LogFile string            `json:"logFile"`
+	Tools   map[string]string `json:"tools,omitempty"`
 }
 
 // Default returns settings that reproduce the safe behaviour of the original
@@ -124,6 +132,7 @@ func Default() Config {
 		Aspect:       "",
 		GenPTS:       true,
 		VideoCodec:   "h264",
+		AV1Encoder:   "svt",
 		CRF:          22,
 		Preset:       "fast",
 		AudioCodec:   "copy",
@@ -150,6 +159,10 @@ func (c *Config) Normalize() {
 	c.Format = strings.TrimPrefix(strings.ToLower(strings.TrimSpace(c.Format)), ".")
 	c.Overwrite = OverwritePolicy(strings.ToLower(strings.TrimSpace(string(c.Overwrite))))
 	c.VideoCodec = strings.ToLower(strings.TrimSpace(c.VideoCodec))
+	if c.VideoCodec == "hevc" {
+		c.VideoCodec = "h265"
+	}
+	c.AV1Encoder = strings.ToLower(strings.TrimSpace(c.AV1Encoder))
 	c.Preset = strings.ToLower(strings.TrimSpace(c.Preset))
 	c.AudioCodec = strings.ToLower(strings.TrimSpace(c.AudioCodec))
 	c.AudioRate = strings.TrimSpace(c.AudioRate)
@@ -174,6 +187,9 @@ func (c *Config) Normalize() {
 	if c.VideoCodec == "" {
 		c.VideoCodec = "h264"
 	}
+	if c.AV1Encoder == "" {
+		c.AV1Encoder = "svt"
+	}
 	if c.Preset == "" {
 		c.Preset = "fast"
 	}
@@ -194,6 +210,23 @@ func (c *Config) Normalize() {
 	}
 	if c.Extensions == nil {
 		c.Extensions = DefaultExtensions()
+	}
+	if len(c.Tools) == 0 {
+		c.Tools = nil
+	} else {
+		cleaned := make(map[string]string, len(c.Tools))
+		for id, path := range c.Tools {
+			id = strings.ToLower(strings.TrimSpace(id))
+			path = strings.TrimSpace(path)
+			if id != "" && path != "" {
+				cleaned[id] = path
+			}
+		}
+		if len(cleaned) == 0 {
+			c.Tools = nil
+		} else {
+			c.Tools = cleaned
+		}
 	}
 
 	seen := make(map[string]bool, len(c.Extensions))
@@ -241,10 +274,17 @@ func (c Config) Validate() error {
 		}
 	}
 	if c.Mode == ModeEncode {
-		if c.VideoCodec != "h264" && c.VideoCodec != "h265" && c.VideoCodec != "hevc" {
-			add("video codec must be h264 or h265 (got %q)", c.VideoCodec)
+		if !contains(SupportedVideoCodecs, c.VideoCodec) {
+			add("video codec must be h264, h265 or av1 (got %q)", c.VideoCodec)
 		}
-		if c.CRF < 0 || c.CRF > 51 {
+		if c.VideoCodec == "av1" {
+			if !contains(SupportedAV1Encoders, c.AV1Encoder) {
+				add("av1Encoder must be svt, aom or rav1e (got %q)", c.AV1Encoder)
+			}
+			if c.CRF < 0 || c.CRF > 63 {
+				add("crf must be between 0 and 63 for AV1 (got %d)", c.CRF)
+			}
+		} else if c.CRF < 0 || c.CRF > 51 {
 			add("crf must be between 0 and 51 (got %d)", c.CRF)
 		}
 		if !contains(SupportedPresets, c.Preset) {
@@ -428,6 +468,12 @@ func Recipes() []Recipe {
 			ID: "encode-hevc", Name: "Re-encode to HEVC",
 			Description: "H.265 CRF 24 for smaller archives. Slower, and needs HEVC-capable players.",
 			Mode:        ModeEncode, Format: "mp4", VideoCodec: "h265", CRF: 24, Preset: "medium",
+			AudioCodec: "copy", Faststart: true, Overwrite: OverwriteSkip,
+		},
+		{
+			ID: "encode-av1", Name: "Re-encode to AV1",
+			Description: "SVT-AV1 CRF 30 for the smallest modern archive. Needs an AV1-capable player.",
+			Mode:        ModeEncode, Format: "mp4", VideoCodec: "av1", CRF: 30, Preset: "medium",
 			AudioCodec: "copy", Faststart: true, Overwrite: OverwriteSkip,
 		},
 		{

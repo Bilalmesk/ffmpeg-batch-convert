@@ -54,6 +54,47 @@ func indexOf(args []string, value string) int {
 	return -1
 }
 
+func TestBuildAV1Encoders(t *testing.T) {
+	tests := []struct {
+		encoder string
+		want    []string
+		tag     bool
+	}{
+		{"svt", []string{"-c:v", "libsvtav1", "-preset", "9", "-crf", "30"}, true},
+		{"aom", []string{"-c:v", "libaom-av1", "-crf", "30", "-cpu-used", "5"}, true},
+		{"rav1e", []string{"-c:v", "librav1e", "-qp", "30", "-speed", "7"}, true},
+	}
+	for _, test := range tests {
+		t.Run(test.encoder, func(t *testing.T) {
+			cfg := baseConfig()
+			cfg.Mode = config.ModeEncode
+			cfg.Format = "mp4"
+			cfg.VideoCodec = "av1"
+			cfg.AV1Encoder = test.encoder
+			cfg.CRF = 30
+			cfg.Preset = "fast"
+			result := Build(BuildRequest{Cfg: cfg, Input: "in.ts", Output: "out.mp4", Info: testInfo()})
+			if !containsSequence(result.Args, test.want...) {
+				t.Fatalf("args %v missing %v", result.Args, test.want)
+			}
+			if test.tag && !containsSequence(result.Args, "-tag:v", "av01") {
+				t.Fatalf("missing AV1 tag: %v", result.Args)
+			}
+		})
+	}
+}
+
+func TestBuildAV1WarnsForTS(t *testing.T) {
+	cfg := baseConfig()
+	cfg.Mode = config.ModeEncode
+	cfg.Format = "ts"
+	cfg.VideoCodec = "av1"
+	result := Build(BuildRequest{Cfg: cfg, Input: "in.ts", Output: "out.ts", Info: testInfo()})
+	if len(result.Warnings) == 0 || !strings.Contains(strings.Join(result.Warnings, " "), "MPEG-TS") {
+		t.Fatalf("warnings = %v", result.Warnings)
+	}
+}
+
 func TestBuildRemuxMP4SkipsBitmapSubtitles(t *testing.T) {
 	cfg := baseConfig()
 	cfg.Mode = config.ModeRemux
