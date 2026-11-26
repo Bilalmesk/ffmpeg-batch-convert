@@ -47,6 +47,14 @@ func TestBuildFFmpegDASH(t *testing.T) {
 			t.Fatalf("args %q missing %q", joined, want)
 		}
 	}
+	if plan.Commands[0].Dir != out {
+		t.Fatalf("DASH command dir = %q, want %q", plan.Commands[0].Dir, out)
+	}
+	for i, arg := range plan.Commands[0].Args {
+		if arg == "-init_seg_name" && strings.Contains(plan.Commands[0].Args[i+1], out) {
+			t.Fatalf("DASH init template should be relative to the manifest: %q", plan.Commands[0].Args[i+1])
+		}
+	}
 }
 
 func TestBuildMP4BoxAndBento4(t *testing.T) {

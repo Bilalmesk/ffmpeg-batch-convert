@@ -39,6 +39,7 @@ func TestFFmpegPackagingRealClip(t *testing.T) {
 			}
 			for _, command := range plan.Commands {
 				run := exec.CommandContext(ctx, command.Binary, command.Args...)
+				run.Dir = command.Dir
 				if data, err := run.CombinedOutput(); err != nil {
 					t.Fatalf("%s: %v\n%s", command.Binary, err, data)
 				}

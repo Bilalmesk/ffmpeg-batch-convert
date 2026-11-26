@@ -110,7 +110,7 @@ func cmdPackage(args []string, style term.Style) int {
 	}
 
 	for _, command := range plan.Commands {
-		if err := runExternal(ctx, command.Binary, command.Args, os.Stdout, os.Stderr); err != nil {
+		if err := runExternalIn(ctx, command.Binary, command.Args, command.Dir, os.Stdout, os.Stderr); err != nil {
 			fmt.Fprintf(os.Stderr, "%s %v\n", style.Red("error:"), err)
 			return 1
 		}

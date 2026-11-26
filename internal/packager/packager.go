@@ -30,6 +30,7 @@ const (
 type Command struct {
 	Binary string
 	Args   []string
+	Dir    string
 }
 
 // Request describes a packaging job.
@@ -131,6 +132,7 @@ func buildFFmpeg(input, outputDir string, req Request) (Plan, error) {
 			"-hls_segment_filename", filepath.Join(outputDir, "segment_%05d.ts"),
 			plan.Manifest,
 		)
+		plan.Commands = []Command{{Binary: ffmpeg, Args: args}}
 	case FormatDASH:
 		plan.Manifest = filepath.Join(outputDir, "manifest.mpd")
 		args = append(args,
@@ -138,13 +140,15 @@ func buildFFmpeg(input, outputDir string, req Request) (Plan, error) {
 			"-seg_duration", fmt.Sprintf("%d", req.SegmentSeconds),
 			"-use_template", "1",
 			"-use_timeline", "1",
-			"-init_seg_name", filepath.Join(outputDir, "init-stream$RepresentationID$.m4s"),
-			"-media_seg_name", filepath.Join(outputDir, "chunk-stream$RepresentationID$-$Number%05d$.m4s"),
+			"-init_seg_name", "init-stream$RepresentationID$.m4s",
+			"-media_seg_name", "chunk-stream$RepresentationID$-$Number%05d$.m4s",
 			"-adaptation_sets", "id=0,streams=v id=1,streams=a",
 			plan.Manifest,
 		)
+		// Relative DASH segment names resolve against the process working
+		// directory, so run this command inside the output folder.
+		plan.Commands = []Command{{Binary: ffmpeg, Args: args, Dir: outputDir}}
 	}
-	plan.Commands = []Command{{Binary: ffmpeg, Args: args}}
 	plan.Notes = append(plan.Notes, "FFmpeg stream-copy packaging; re-encode first if the source codecs are not HLS/DASH-friendly")
 	return plan, nil
 }

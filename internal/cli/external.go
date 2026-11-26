@@ -13,7 +13,12 @@ import (
 // runExternal executes an optional tool with inherited stdio. It never invokes
 // a shell, so paths and arguments cannot be re-interpreted by cmd.exe.
 func runExternal(ctx context.Context, binary string, args []string, stdout, stderr io.Writer) error {
+	return runExternalIn(ctx, binary, args, "", stdout, stderr)
+}
+
+func runExternalIn(ctx context.Context, binary string, args []string, dir string, stdout, stderr io.Writer) error {
 	cmd := exec.CommandContext(ctx, binary, args...)
+	cmd.Dir = dir
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
