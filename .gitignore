@@ -19,3 +19,6 @@ ffbatch-report-*.csv
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Local browser-automation artifacts
+.playwright-mcp/
