@@ -3,7 +3,11 @@
 [![CI](https://github.com/Bilalmesk/ffmpeg-batch-convert/actions/workflows/ci.yml/badge.svg)](https://github.com/Bilalmesk/ffmpeg-batch-convert/actions/workflows/ci.yml)
 [![Release](https://github.com/Bilalmesk/ffmpeg-batch-convert/actions/workflows/release.yml/badge.svg)](https://github.com/Bilalmesk/ffmpeg-batch-convert/actions/workflows/release.yml)
 
-**A local FFmpeg batch studio for Windows, macOS and Linux.** One Go binary, two front ends: a polished command line and a live web dashboard. Scan a folder, preview exactly what will be converted, then watch every file move through a safe, parallel pipeline.
+**A local FFmpeg batch studio and workflow engine for Windows, macOS and Linux.** One Go binary, two front ends: a polished command line and a live web dashboard. Convert a folder, watch an inbox, or chain probe → convert → quality gate → mux → package → audio in one repeatable workflow.
+
+> **Latest release:** [v0.5.0 — typed multi-step workflows](https://github.com/Bilalmesk/ffmpeg-batch-convert/releases/tag/v0.5.0)
+
+**Jump to:** [What it handles](#what-it-handles) · [Install](#install) · [CLI](#quick-start-with-the-cli) · [Workflows](#quick-start-with-workflows) · [Pro toolchain](#pro-toolchain) · [Safety](#safety-model) · [Configuration](#configuration) · [Troubleshooting](#troubleshooting)
 
 ![Convert dashboard](docs/dashboard-convert.png)
 
@@ -31,6 +35,25 @@ FFBatch keeps the useful part — FFmpeg — and wraps it in a proper tool:
 - **A Doctor** that checks FFmpeg, encoders, configuration and write access.
 - **Zero runtime dependencies** other than FFmpeg and FFprobe. The dashboard is embedded in the binary with `go:embed`; no Node.js, no browser download, no telemetry.
 
+## What it handles
+
+| Situation | Start with | Why it fits |
+| --- | --- | --- |
+| Recorder/TV `.ts`/`.m2ts` → MP4 | `ffbatch convert` or `workflow ts-repair` | Lossless stream copy, timestamp repair, verification |
+| Large library → smaller archive | `ffbatch encode --codec h265` (or `--codec av1`) or `workflow av1-quality` | HEVC/AV1 with quality gates and reports |
+| Multiple audio languages | `--audio-tracks preferred --audio-lang ara` | Keeps the right tracks without re-encoding video |
+| Cut recordings | `--trim-start` / `--trim-end` | Fast remux trim or frame-accurate encode |
+| Streaming delivery | `ffbatch package --format hls` (or `--format dash`) | Mezzanine + segmented output and manifest |
+| Preserve MKV tracks/chapters/tags | `ffbatch mux` or `workflow mkv-preserve` | MKVToolNix without re-encoding |
+| Extract or normalize audio | `ffbatch audio` or `audio-delivery` | FLAC/Opus/MP3/M4A/WAV with loudness normalization |
+| Download and convert | `ffbatch fetch` then `watch`/`convert` | yt-dlp ingest plus the normal safe pipeline |
+| Archive / audit / evidence | `--hash-files --archive --report`, then `verify` | SHA-256 chain of custody and re-checkable manifests |
+| One input → several deliverables | `workflow multi-delivery` | H.264 MP4 + AV1 + VMAF gate + FLAC in one run |
+| Dashboard on a LAN | `ffbatch serve --token ...` | Token auth, loopback by default |
+
+The dashboard covers conversion, watch folders, runs and diagnostics. Workflows
+and the pro tool commands are currently CLI-first.
+
 ## Screens
 
 | Runs with live progress | Environment checks |
@@ -38,6 +61,9 @@ FFBatch keeps the useful part — FFmpeg — and wraps it in a proper tool:
 | ![Runs dashboard](docs/dashboard-runs.png) | ![Doctor dashboard](docs/dashboard-doctor.png) |
 
 ![Watch folders](docs/dashboard-watch.png)
+
+Workflow runs and pro-tool commands are intentionally CLI-first; the dashboard
+still owns preview, progress, watch folders and retry.
 
 ## Requirements
 
@@ -171,6 +197,39 @@ ffbatch convert "D:\Recordings" --dry-run --json
 ```
 
 Flags may appear before or after paths: `ffbatch convert folder --recursive` and `ffbatch convert --recursive folder` are equivalent.
+
+## Quick start with workflows
+
+Use a workflow when one command is not enough. These are typed, verifiable pipelines, not shell scripts.
+
+```powershell
+# What is available?
+ffbatch workflow list
+
+# Repair a transport stream, verify it, and record SHA-256 hashes
+ffbatch workflow run ts-repair --input "D:\recording.ts" --output "D:\Fixed"
+
+# AV1 encode with a VMAF gate and a verified delivery copy
+ffbatch workflow run av1-quality --input "D:\source.mkv" --output "D:\AV1"
+
+# The full mashup: H.264 MP4 + AV1 + VMAF + FLAC from one master
+ffbatch workflow run multi-delivery --input "D:\master.mov" --output "D:\Delivery"
+```
+
+`multi-delivery` writes:
+
+- `master.h264.mp4` — compatibility copy
+- `master.av1.mp4` — smaller archive copy, quality-gated
+- `master.flac` — normalized audio
+
+To customize a pipeline, write it out as JSON, edit the steps, then run the file:
+
+```powershell
+ffbatch workflow init multi-delivery
+ffbatch workflow run multi-delivery.json --input "D:\master.mov" --output "D:\Delivery"
+```
+
+The full schema is in [`docs/WORKFLOWS.md`](docs/WORKFLOWS.md).
 
 ## Commands
 
@@ -376,7 +435,7 @@ for timeline editing, and **PyAV/MoviePy/OpenCV/fluent-ffmpeg/ffmpeg.wasm** are
 language-specific libraries. They are excellent at their jobs, but adding them
 to a Go batch converter would duplicate FFmpeg, bloat the binary and weaken the
 single-binary model. [docs/TOOLCHAIN.md](docs/TOOLCHAIN.md) explains each choice
-and the roadmap (ab-av1 tuning, audio mode, Av1an, VapourSynth presets).
+and the roadmap (ab-av1 tuning, Av1an, VapourSynth presets).
 
 ## Workflows
 
@@ -475,6 +534,14 @@ Every completed job is checked for existence, exact size and SHA-256. When a sou
 
 `--log FILE` appends timestamped run and job lines. The dashboard keeps an in-memory activity log for each run and exposes it in the Runs screen.
 
+Workflow runs have a separate machine-readable report:
+
+```powershell
+ffbatch workflow run multi-delivery --input "D:\master.mov" --output "D:\Delivery" --json > workflow.json
+```
+
+It records the workflow name, status, input/output folders, every step's status, output path, manifest, quality score, timings and error. That makes a workflow easy to audit or drive from another program.
+
 ## Migrating the old `.bat` files
 
 The original scripts live in [`legacy/`](legacy/) with a mapping table. The short version:
@@ -497,6 +564,8 @@ The original scripts live in [`legacy/`](legacy/) with a mapping table. The shor
 - Use `ffbatch quality` after a trial encode to verify that the chosen CRF still meets your quality bar.
 - Keep sources and outputs on the same volume when possible; the final rename is then instantaneous.
 - `--hash-files` adds one full read of every source and output. It is forced for `--archive`/`--delete-source`, where the audit trail matters more than the extra I/O.
+- **Workflows are sequential.** `multi-delivery` performs both H.264 and AV1 encodes, so expect roughly the sum of both encode times plus quality measurement. Use `--work` on the same drive as the output to avoid extra cross-volume copies.
+- `--keep-work` is useful when debugging a failed workflow; without it the intermediate folder is removed after the run.
 - Network shares work, but `ffprobe` and `ffmpeg` add latency per file.
 
 ## Development
@@ -525,7 +594,7 @@ internal/
   watch/      folder polling, settle detection and queueing
   web/        HTTP API, SSE hub, embedded dashboard assets
   ytdlp/      yt-dlp argv construction
-docs/         architecture and API notes
+docs/         architecture, API, toolchain and workflow documentation
 legacy/       original batch files
 ```
 
@@ -541,7 +610,19 @@ More detail: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), [`docs/API.md`](doc
 
 ### Release
 
-Tag a commit (`v0.5.0`) and push it. GitHub Actions runs tests and GoReleaser builds Windows, macOS and Linux archives with checksums. It then generates an SPDX SBOM and signed build-provenance/SBOM attestations for the archives. See [`.goreleaser.yaml`](.goreleaser.yaml).
+Current release: [v0.5.0](https://github.com/Bilalmesk/ffmpeg-batch-convert/releases/tag/v0.5.0). Tag a commit (`v0.5.0`) and push it. GitHub Actions runs tests and GoReleaser builds Windows, macOS and Linux archives with checksums. It then generates an SPDX SBOM and signed build-provenance/SBOM attestations for the archives. See [`.goreleaser.yaml`](.goreleaser.yaml).
+
+Verify a downloaded archive:
+
+```bash
+gh attestation verify ffbatch_0.5.0_windows_amd64.zip --repo Bilalmesk/ffmpeg-batch-convert
+```
+
+Or install directly:
+
+```bash
+go install github.com/Bilalmesk/ffmpeg-batch-convert/cmd/ffbatch@v0.5.0
+```
 
 ## Troubleshooting
 
@@ -569,6 +650,12 @@ Tag a commit (`v0.5.0`) and push it. GitHub Actions runs tests and GoReleaser bu
 | Windows SmartScreen warning | The binary is unsigned. Build it yourself or use `Unblock-File` on the release archive. |
 | Arabic or other Unicode names | The app is UTF-8 end-to-end. Use Windows Terminal for the best console rendering. |
 | Encoder missing | Use a full FFmpeg build (gyan.dev or BtbN). AV1 needs libsvtav1, libaom-av1 or librav1e. Hardware encoders are not required. |
+| Workflow quality gate failed | The candidate scored below `min`. Lower the CRF, raise the score threshold only when justified, or edit the step in the JSON. |
+| `template ... is not defined` | A step references a missing value. Run `ffbatch workflow show NAME` and check the step ID / field name. |
+| Workflow says `output already exists` | Re-run with `--overwrite`, or choose a new `--output` folder. |
+| Workflow `mkvmerge was not found` | Install MKVToolNix, or set `tools.mkvmerge` in `ffbatch.json`. |
+| Workflow is slower than expected | `multi-delivery` encodes H.264 and AV1 sequentially and measures VMAF. Use `--work` on the output drive to avoid cross-volume copies. |
+| Need to inspect intermediates | Add `--keep-work`; the work directory path is printed at the end. |
 
 ## Contributing
 
