@@ -2,7 +2,6 @@ package ffmpeg
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
@@ -65,19 +64,9 @@ func Build(req BuildRequest) BuildResult {
 	case config.ModeRemux:
 		args = append(args, "-c:v", "copy")
 	case config.ModeEncode, config.ModeRename:
-		encoder := "libx264"
-		if cfg.VideoCodec == "h265" || cfg.VideoCodec == "hevc" {
-			encoder = "libx265"
-		}
-		args = append(args,
-			"-c:v", encoder,
-			"-preset", cfg.Preset,
-			"-crf", strconv.Itoa(cfg.CRF),
-			"-pix_fmt", "yuv420p",
-		)
-		if encoder == "libx265" && isMP4(cfg.Format) {
-			args = append(args, "-tag:v", "hvc1")
-		}
+		encodeArgs, encodeWarnings := videoEncodeArgs(cfg)
+		args = append(args, encodeArgs...)
+		res.Warnings = append(res.Warnings, encodeWarnings...)
 	}
 
 	// ---- Audio ---------------------------------------------------------

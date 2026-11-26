@@ -24,6 +24,8 @@ FFBatch keeps the useful part — FFmpeg — and wraps it in a proper tool:
 - **Parallel workers**, cancellation, retry of failed jobs, skip/number/replace/fail collision policies.
 - **Trim and track selection**: cut at in/out points, pick the first audio track or all tracks in a preferred language.
 - **Stream-aware planning**: picks the real video stream (not cover art), converts text subtitles to `mov_text` for MP4, skips bitmap subtitles with a warning, and falls back to AAC when copied audio would not play.
+- **AV1, H.264 and H.265** encoding, plus MKVToolNix, MP4Box/Bento4, yt-dlp and VMAF integrations when those optional tools are installed.
+- **Audio extraction** to FLAC, Opus, MP3, M4A or WAV, with optional loudness normalization.
 - **Reports** in JSON and CSV, optional text logs.
 - **A Doctor** that checks FFmpeg, encoders, configuration and write access.
 - **Zero runtime dependencies** other than FFmpeg and FFprobe. The dashboard is embedded in the binary with `go:embed`; no Node.js, no browser download, no telemetry.
@@ -41,6 +43,10 @@ FFBatch keeps the useful part — FFmpeg — and wraps it in a proper tool:
 - [FFmpeg](https://ffmpeg.org/) **and** `ffprobe` on `PATH` (both ship in every normal FFmpeg build).
 - Go **1.24+** only if you build from source.
 - Windows 10/11, macOS 12+, or a modern Linux distribution.
+
+Optional pro tools are detected automatically: MKVToolNix (`ffbatch mux`), GPAC
+MP4Box or Bento4 (`ffbatch package`), yt-dlp and aria2c (`ffbatch fetch`).
+`ffbatch tools` shows what is available. See [docs/TOOLCHAIN.md](docs/TOOLCHAIN.md).
 
 Install FFmpeg on Windows:
 
@@ -126,6 +132,24 @@ ffbatch convert "D:\Recordings" --archive "D:\Archive" --hash-files `
 # Re-check a finished batch later (size + SHA-256 + source integrity)
 ffbatch verify --manifest "D:\Reports\convert.json"
 
+# AV1 encode through the same verified pipeline
+ffbatch encode "D:\Recordings\show.mkv" --codec av1 --crf 30 --preset medium
+
+# Professional MKV muxing: keep tracks, chapters, tags and attachments
+ffbatch mux "D:\recording.ts" --output "D:\recording.mkv" --chapters chapters.xml
+
+# Package for streaming
+ffbatch package "D:\movie.mp4" --out "D:\Web\movie" --format hls
+
+# Quality gate a candidate encode against the source
+ffbatch quality --reference "D:\source.mp4" --candidate "D:\encode.mp4" --min 93
+
+# Download, then let Watch convert it
+ffbatch fetch "https://example.com/video" --output "D:\Incoming"
+
+# Extract audio to FLAC/Opus/MP3/M4A/WAV
+ffbatch audio "D:\Recordings" --recursive --format flac --output "D:\Audio"
+
 # Extension-only rename, no media processing
 ffbatch rename "D:\Shows" --to ts
 
@@ -158,6 +182,12 @@ Flags may appear before or after paths: `ffbatch convert folder --recursive` and
 | `ffbatch serve` | Start the local dashboard (`--open` launches the browser). |
 | `ffbatch doctor` | Check FFmpeg, encoders, config and output folder. |
 | `ffbatch verify` | Verify outputs against a JSON report or probe files. |
+| `ffbatch tools` | Detect optional muxing, packaging, ingest and quality tools. |
+| `ffbatch quality` | Compare a candidate encode with a reference (VMAF/SSIM/PSNR). |
+| `ffbatch mux` | Mux MKV tracks, chapters and tags with MKVToolNix. |
+| `ffbatch package` | Package HLS or DASH with FFmpeg, MP4Box or Bento4. |
+| `ffbatch fetch` | Download media with yt-dlp. |
+| `ffbatch audio` | Extract or convert audio to FLAC/Opus/MP3/M4A/WAV. |
 | `ffbatch config` | `show`, `path`, `init`, `validate`. |
 | `ffbatch version` | Build, commit, date and Go runtime. |
 
@@ -168,7 +198,7 @@ Run `ffbatch help <command>` for every flag.
 | Mode | Video | Audio | Use it when |
 | --- | --- | --- | --- |
 | `remux` | stream copy | stream copy | You only need a new container. Lossless, I/O-bound. |
-| `encode` | x264/x265 | copy when compatible, otherwise AAC | You need smaller files or universal playback. |
+| `encode` | x264/x265/AV1 | copy when compatible, otherwise AAC | You need smaller files or universal playback. |
 | `rename` | untouched | untouched | You only want to change `.mp4` ↔ `.ts`. |
 
 Scanning in `rename` mode also discovers `.mp4` files, so `ffbatch rename D:\Shows --to ts` works even though MP4 is not in the normal conversion input list.
@@ -218,6 +248,7 @@ When a run has failed jobs, the Runs screen shows **Retry N failed**. It starts 
 - The dashboard only accepts `application/json` mutations with a same-origin check, CSP, `X-Frame-Options: DENY`, and a loopback bind by default. A non-loopback bind requires `--token` (or `FFBATCH_TOKEN`) unless `--insecure` is passed explicitly.
 - When a token is set, `?token=SECRET` on the first visit sets an HttpOnly, SameSite=Strict cookie and redirects to `/`. API clients can send `Authorization: Bearer SECRET` or `X-FFBatch-Token: SECRET`. The dashboard speaks HTTP, not HTTPS: use a VPN, SSH tunnel or trusted network for sensitive material.
 - GitHub release archives carry SHA-256 checksums, a signed build-provenance attestation and an SPDX SBOM. CI runs CodeQL and `govulncheck`.
+- `ffbatch mux` writes to a temporary `.part` file and renames it only after MKVToolNix succeeds. `ffbatch package` writes a directory of manifests/segments; review them before publishing. `ffbatch quality` is read-only.
 
 ## Trusted pipeline
 
@@ -241,6 +272,107 @@ What happens:
 
 Months later, `ffbatch verify --manifest D:\Reports\case-042.json` re-hashes every output and the archived originals. A changed size or hash returns exit code 1 and names the affected file. The same data is available as CSV for spreadsheets.
 
+## Pro toolchain
+
+FFBatch stays a single binary and still needs only FFmpeg. When other tools are
+installed, it can delegate specialist work to them:
+
+```powershell
+ffbatch tools                  # what is installed, versions and hints
+ffbatch tools --missing        # only what is absent
+```
+
+| Command | Optional tool | Use it for |
+| --- | --- | --- |
+| `ffbatch mux` | MKVToolNix `mkvmerge` | Keep every MKV track, chapter, tag and attachment without re-encoding |
+| `ffbatch package` | FFmpeg (always), MP4Box, Bento4 | HLS and DASH output for web/streaming |
+| `ffbatch fetch` | yt-dlp, aria2c | Download from sites and playlists before converting |
+| `ffbatch quality` | FFmpeg `libvmaf`, `ssim`, `psnr` | Prove that an encode still matches the source |
+
+### AV1 encoding
+
+`--codec av1` routes through the existing verification and reporting pipeline:
+
+```powershell
+ffbatch encode "D:\Shows" --codec av1 --av1-encoder svt --crf 30 --preset medium `
+  --output "D:\AV1" --report "D:\Reports\av1.json"
+```
+
+- `svt` (libsvtav1) is the default and fastest.
+- `aom` (libaom-av1) is the reference encoder, slower.
+- `rav1e` uses the Rust encoder.
+- Preset names are mapped to each encoder's own speed scale.
+- AV1 CRF is 0–63; the dashboard slider expands to 63 when AV1 is selected.
+- Verification expects `av1`, and `ffbatch quality` can measure the result.
+
+### Quality gates
+
+```powershell
+ffbatch quality --reference source.mp4 --candidate encoded.mp4 --min 93
+ffbatch quality --reference source.mp4 --candidate encoded.mp4 --metric ssim --json
+```
+
+VMAF needs an FFmpeg build with `libvmaf`. SSIM and PSNR are built into normal
+FFmpeg builds. Both files are probed, the candidate is scaled to the reference
+resolution, and only the shorter duration is compared. Exit code `1` when the
+score is below `--min`, which makes it usable in a publishing script.
+
+### MKV muxing
+
+```powershell
+ffbatch mux recording.ts --output recording.mkv `
+  --title "Interview" --chapters chapters.xml --languages 0:ara,1:eng
+```
+
+MKVToolNix is better than a generic remux for MKV-specific features: chapters,
+tags, attachments, track names and languages. `--dry-run` prints the command.
+
+### HLS and DASH
+
+```powershell
+ffbatch package movie.mp4 --out D:\Web\movie --format hls --segment 6
+ffbatch package movie.mp4 --out D:\Web\movie --format dash --tool mp4box
+```
+
+The default FFmpeg backend stream-copies the first video and all audio tracks.
+Use `--tool mp4box` or `--tool bento4` when those tools are installed. Package
+after converting to a delivery codec if the source is not HLS/DASH-friendly.
+
+### Downloading
+
+```powershell
+ffbatch fetch "https://example.com/video" --output "D:\Incoming"
+ffbatch fetch "https://example.com/playlist" --output "D:\Incoming" --playlist
+ffbatch fetch "https://example.com/audio" --output "D:\Music" --audio-only --audio-format opus
+```
+
+A download archive in the output folder skips items that were already fetched.
+Use `--downloader aria2c` for large files.
+
+### Audio extraction
+
+```powershell
+ffbatch audio "D:\Recordings" --recursive --format flac --output "D:\Audio"
+ffbatch audio interview.mkv --format opus --bitrate 96k --normalize
+ffbatch audio song.mp4 --format mp3 --json
+```
+
+Audio mode drops video, extracts one track (`--track`), verifies the output with
+`ffprobe`, and moves it into place atomically. FLAC/WAV are lossless; Opus is
+efficient for speech; MP3/M4A are broadly compatible. `--normalize` applies EBU
+R128 loudness normalization through FFmpeg. SoX remains a detected companion
+for effects that go beyond normalization.
+
+### What is not integrated
+
+The ecosystem is bigger than one binary. **libav** is the historical FFmpeg fork
+and not a second engine. **GStreamer** is for live graphs and capture, **MLT** is
+for timeline editing, and **PyAV/MoviePy/OpenCV/fluent-ffmpeg/ffmpeg.wasm** are
+language-specific libraries. They are excellent at their jobs, but adding them
+to a Go batch converter would duplicate FFmpeg, bloat the binary and weaken the
+single-binary model. [docs/TOOLCHAIN.md](docs/TOOLCHAIN.md) explains each choice
+and the roadmap (ab-av1 tuning, audio mode, Av1an, VapourSynth presets).
+
 ## Recipes
 
 | Recipe | Mode | Key settings |
@@ -249,6 +381,7 @@ Months later, `ffbatch verify --manifest D:\Reports\case-042.json` re-hashes eve
 | TS seeking fix | remux | MP4, `+genpts`, faststart, 16:9 |
 | Re-encode to MP4 | encode | H.264, CRF 22, `fast` |
 | Re-encode to HEVC | encode | H.265, CRF 24, `medium` |
+| Re-encode to AV1 | encode | AV1/SVT-AV1, CRF 30, `medium` |
 | MP4 to TS | rename | target `.ts` |
 
 Recipes are available in the dashboard and as `--recipe <id>` on the CLI.
@@ -281,6 +414,7 @@ See [`ffbatch.example.json`](ffbatch.example.json) for every field.
   "aspect": "",
   "genPts": true,
   "videoCodec": "h264",
+  "av1Encoder": "svt",
   "crf": 22,
   "preset": "fast",
   "audioCodec": "copy",
@@ -290,11 +424,12 @@ See [`ffbatch.example.json`](ffbatch.example.json) for every field.
   "subtitleCodec": "auto",
   "trimStart": "",
   "trimEnd": "",
-  "extensions": ["ts", "m2ts", "mkv", "mov", "avi", "wmv", "flv", "webm", "m4v", "mpg", "mpeg"]
+  "extensions": ["ts", "m2ts", "mkv", "mov", "avi", "wmv", "flv", "webm", "m4v", "mpg", "mpeg"],
+  "tools": {}
 }
 ```
 
-CLI flags always override the file. The dashboard's Output card exposes the archive folder, while the Advanced panel adds workers, aspect, trim points, extensions, faststart, timestamps, output verification, SHA-256 hashing, source deletion, dry run and the log file. Audio track selection and the preferred language live in the Mode card because they apply to both remux and encode. Dashboard changes are sent to the running server immediately, so the Watch feature always uses the current settings.
+CLI flags always override the file. The dashboard's Output card exposes the archive folder, while the Advanced panel adds workers, aspect, trim points, extensions, faststart, timestamps, output verification, SHA-256 hashing, source deletion, dry run and the log file. Audio track selection and the preferred language live in the Mode card because they apply to both remux and encode. The AV1 encoder selector appears when AV1 is chosen. Dashboard changes are sent to the running server immediately, so the Watch feature always uses the current settings.
 
 ## Reports and logs
 
@@ -329,6 +464,8 @@ The original scripts live in [`legacy/`](legacy/) with a mapping table. The shor
 - **Remux** is disk-bound. `--workers 2` to `4` is usually optimal; more workers on one spinning disk can be slower.
 - **Encode** is CPU-bound. Start with one worker per physical core, then reduce if the machine becomes unresponsive. `--preset veryfast`/`fast` gives the best quality-per-minute; `slow`/`veryslow` buy smaller files.
 - **CRF**: 18 visually lossless, 20–22 high quality, 23–25 balanced, 26+ smaller. Lower is bigger and better.
+- **AV1**: `--av1-encoder svt` is the practical batch choice. `aom` is much slower, and `rav1e` sits between them. AV1 CRF uses a 0–63 scale and is not directly comparable to x264/x265 CRF.
+- Use `ffbatch quality` after a trial encode to verify that the chosen CRF still meets your quality bar.
 - Keep sources and outputs on the same volume when possible; the final rename is then instantaneous.
 - `--hash-files` adds one full read of every source and output. It is forced for `--archive`/`--delete-source`, where the audit trail matters more than the extra I/O.
 - Network shares work, but `ffprobe` and `ffmpeg` add latency per file.
@@ -341,17 +478,23 @@ cmd/ffbatch/   go-install entry point (thin wrapper over internal/cli)
 internal/
   cli/        commands, flag parsing, rich terminal output
   config/     defaults, validation, JSON load/save, recipes
+  audio/      audio-only extraction command construction
   disk/       free-space probes (Windows + Unix)
   doctor/     environment diagnostics
   engine/     scanning, planning, worker pool, verification, reports
   ffmpeg/     binary discovery, argv builder, progress parser, process runner
   hashutil/   streaming SHA-256 for chain-of-custody reports
   mediainfo/  ffprobe wrapper
+  muxer/      MKVToolNix command construction
+  packager/   HLS/DASH plans for FFmpeg, MP4Box and Bento4
+  quality/    VMAF, SSIM and PSNR measurement
+  toolchain/  optional tool detection, versions and hints
   term/       ANSI styling + Windows virtual terminal
   units/      human-readable sizes and durations
   version/    build metadata
   watch/      folder polling, settle detection and queueing
   web/        HTTP API, SSE hub, embedded dashboard assets
+  ytdlp/      yt-dlp argv construction
 docs/         architecture and API notes
 legacy/       original batch files
 ```
@@ -364,11 +507,11 @@ go build -o dist/ffbatch.exe .
 
 The UI is plain HTML/CSS/ES2020 with no build step. Assets live in `internal/web/assets/` and are embedded with `go:embed`; rebuild the binary after editing them.
 
-More detail: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and [`docs/API.md`](docs/API.md).
+More detail: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), [`docs/API.md`](docs/API.md) and [`docs/TOOLCHAIN.md`](docs/TOOLCHAIN.md).
 
 ### Release
 
-Tag a commit (`v0.3.1`) and push it. GitHub Actions runs tests and GoReleaser builds Windows, macOS and Linux archives with checksums. It then generates an SPDX SBOM and signed build-provenance/SBOM attestations for the archives. See [`.goreleaser.yaml`](.goreleaser.yaml).
+Tag a commit (`v0.4.0`) and push it. GitHub Actions runs tests and GoReleaser builds Windows, macOS and Linux archives with checksums. It then generates an SPDX SBOM and signed build-provenance/SBOM attestations for the archives. See [`.goreleaser.yaml`](.goreleaser.yaml).
 
 ## Troubleshooting
 
@@ -388,9 +531,14 @@ Tag a commit (`v0.3.1`) and push it. GitHub Actions runs tests and GoReleaser bu
 | Verification failed after a conversion | The output was truncated or structurally wrong. The temporary file was removed and the source was left untouched; check free space, the FFmpeg log and `ffbatch probe` on the source. |
 | `not enough free space` | The destination volume cannot hold the estimated output. Free space, choose another output folder, or convert fewer files at once. |
 | Archived files keep appearing in Watch | Upgrade to 0.3.0; the watcher now ignores the archive folder. |
+| `libvmaf` not found | Use an FFmpeg build with libvmaf, or run `ffbatch quality --metric ssim`/`psnr`. |
+| `mkvmerge was not found` | Install MKVToolNix, or set `tools.mkvmerge` in `ffbatch.json`. |
+| `MP4Box is not installed` | Use `--tool ffmpeg` for HLS/DASH, or install GPAC/Bento4. |
+| HLS/DASH player shows nothing | The source codecs may not be delivery-friendly. Encode to H.264/AAC first, then package. |
+| yt-dlp download skips a video | It is already in the folder's `.ffbatch-download-archive.txt`; use `--no-archive` or remove the entry. |
 | Windows SmartScreen warning | The binary is unsigned. Build it yourself or use `Unblock-File` on the release archive. |
 | Arabic or other Unicode names | The app is UTF-8 end-to-end. Use Windows Terminal for the best console rendering. |
-| Encoder missing | Use a full FFmpeg build (gyan.dev or BtbN). Hardware encoders are not required. |
+| Encoder missing | Use a full FFmpeg build (gyan.dev or BtbN). AV1 needs libsvtav1, libaom-av1 or librav1e. Hardware encoders are not required. |
 
 ## Contributing
 
@@ -401,9 +549,11 @@ described in [SECURITY.md](SECURITY.md).
 Every pull request runs CI on **Windows and Ubuntu**: `gofmt`, `go vet`,
 `go test ./...`, a full build, `govulncheck`, and an end-to-end FFmpeg smoke
 conversion that also exercises hashing, verification and tamper rejection on
-Ubuntu. CodeQL analyzes the Go code on every push and pull request. Pushing a
-`v*` tag runs the same CI matrix before GoReleaser builds the Windows, macOS and
-Linux archives and publishes the GitHub release.
+Ubuntu. Tests cover AV1 argv planning, audio extraction, MKV muxing, HLS/DASH
+packaging, quality metrics and yt-dlp argument construction. CodeQL analyzes the
+Go code on every push and pull request. Pushing a `v*` tag runs the same CI matrix before
+GoReleaser builds the Windows, macOS and Linux archives and publishes the GitHub
+release.
 
 ## License
 

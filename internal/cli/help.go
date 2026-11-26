@@ -16,6 +16,12 @@ Commands:
   serve      Open the local web dashboard
   doctor     Verify FFmpeg, encoders, config and output folders
   verify     Check outputs against a report manifest (size + SHA-256)
+  tools      Detect optional muxing, packaging, ingest and quality tools
+  quality    Compare a candidate encode with a reference (VMAF/SSIM/PSNR)
+  mux        Mux MKV tracks/chapters/tags with MKVToolNix
+  package    Package a file as HLS or DASH
+  fetch      Download media with yt-dlp
+  audio      Extract or convert audio tracks
   config     Show, create or validate ffbatch.json
   version    Print build information
 
@@ -26,6 +32,9 @@ Examples:
   ffbatch remux movie.ts --to mp4 --genpts
   ffbatch rename "D:\Shows" --to ts
   ffbatch verify --manifest "D:\Reports\batch.json"
+  ffbatch quality --reference source.mp4 --candidate encode.mp4
+  ffbatch audio "D:\Recordings" --recursive --format flac
+  ffbatch tools
   ffbatch serve
 
 Run "ffbatch help <command>" for all flags.
@@ -62,8 +71,9 @@ Flags:
   --dry-run                    Print the planned commands without writing files
 
 Video:
-  --codec h264|h265            Encoder for encode mode (default: h264)
-  --crf N                      Quality, 0-51, lower is better (default: 22)
+  --codec h264|h265|av1            Encoder for encode mode (default: h264)
+  --av1-encoder svt|aom|rav1e     AV1 implementation (default: svt)
+  --crf N                      Quality, 0-51 (AV1: 0-63), lower is better (default: 22)
   --preset NAME                ultrafast ... veryslow (default: fast)
   --faststart[=false]          MP4 faststart index (default: on)
   --aspect RATIO               Force display aspect, e.g. 16:9 (empty: keep)
@@ -222,6 +232,166 @@ Exit code is 0 when everything passes or is skipped, 1 on any failure.
 Examples:
   ffbatch verify --manifest ffbatch-20260101-120000.json
   ffbatch verify episode.mp4
+`
+
+const toolsUsage = `Detect the optional tools that FFBatch can use.
+
+Usage:
+  ffbatch tools [flags]
+
+Flags:
+  --json               Print the registry as JSON
+  --missing            Only show tools that were not found
+  --config FILE        Use a specific ffbatch.json
+  --no-color           Disable ANSI colours
+
+Core FFmpeg/FFprobe are required. Everything else is optional and is only
+invoked by the commands that need it: mkvmerge (mux), MP4Box/Bento4 (package),
+yt-dlp (fetch), libvmaf (quality), and companion tools such as MediaInfo, SoX,
+HandBrakeCLI, Streamlink, Av1an and VapourSynth.
+
+Examples:
+  ffbatch tools
+  ffbatch tools --missing
+  ffbatch tools --json
+`
+
+const qualityUsage = `Compare a candidate encode with a reference using FFmpeg filters.
+
+Usage:
+  ffbatch quality --reference REF --candidate FILE [flags]
+
+Flags:
+  --reference FILE     Original/reference video
+  --candidate FILE     Encoded/output video
+  --metric vmaf|ssim|psnr
+                       Quality metric (default: vmaf)
+  --min SCORE          Exit 1 when the score is below this value
+  --threads N          VMAF worker threads (default: up to 8)
+  --json               Print the result as JSON
+  --config FILE        Use a specific ffbatch.json
+  --no-color           Disable ANSI colours
+
+VMAF requires an FFmpeg build with libvmaf. SSIM and PSNR are built in.
+Candidates at a different resolution are scaled to the reference resolution.
+Only the shorter duration is compared.
+
+Examples:
+  ffbatch quality --reference source.mp4 --candidate encode.mp4
+  ffbatch quality --reference source.mp4 --candidate encode.mp4 --min 93
+  ffbatch quality --reference source.mp4 --candidate encode.mp4 --metric ssim
+`
+
+const muxUsage = `Mux media into MKV with MKVToolNix (no re-encoding).
+
+Usage:
+  ffbatch mux <input> --output <output.mkv> [flags]
+
+Flags:
+  --output FILE        Output .mkv file (required)
+  --title TITLE        Set the segment title
+  --chapters FILE      Chapters file (XML/OGM/Matroska)
+  --languages LIST     Track languages as ID:lang, e.g. 0:ara,1:eng
+  --track-names LIST   Track names as ID:name, e.g. 0:Arabic
+  --no-audio           Drop audio tracks
+  --no-video           Drop video tracks
+  --no-subtitles       Drop subtitle tracks
+  --no-chapters        Drop chapters
+  --overwrite          Replace an existing output
+  --tool mkvmerge      Backend (currently mkvmerge)
+  --dry-run            Print the command without running it
+  --config FILE        Use a specific ffbatch.json
+  --no-color           Disable ANSI colours
+
+mkvmerge preserves tracks, chapters, tags and attachments better than a
+generic FFmpeg remux, and never re-encodes.
+
+Example:
+  ffbatch mux "D:\recording.ts" --output "D:\recording.mkv" --languages 0:ara,1:eng --title "Interview"
+`
+
+const packageUsage = `Package a finished file as HLS or DASH.
+
+Usage:
+  ffbatch package <input> --out DIR [--format hls|dash] [flags]
+
+Flags:
+  --out DIR            Output directory (required)
+  --format hls|dash    Streaming format (default: hls)
+  --segment SECONDS    Segment length, 1-60 (default: 6)
+  --tool auto|ffmpeg|mp4box|bento4
+                       Packaging backend (default: ffmpeg)
+  --dry-run            Print the commands without running them
+  --config FILE        Use a specific ffbatch.json
+  --no-color           Disable ANSI colours
+
+The FFmpeg backend stream-copies the first video and all audio tracks, so the
+source codecs must already be HLS/DASH-friendly. MP4Box and Bento4 are optional
+advanced backends; install them to use --tool mp4box or --tool bento4.
+Use a fresh output directory: existing segments are not deleted.
+
+Examples:
+  ffbatch package movie.mp4 --out D:\Web\movie --format hls
+  ffbatch package movie.mp4 --out D:\Web\movie --format dash --segment 4
+  ffbatch package movie.mp4 --out D:\Web\movie --tool mp4box --dry-run
+`
+
+const fetchUsage = `Download media with yt-dlp for later conversion.
+
+Usage:
+  ffbatch fetch <url> [url...] --output DIR [flags]
+
+Flags:
+  --output DIR         Download folder (required)
+  --format SELECTOR    yt-dlp format selector, e.g. "bv*+ba/b"
+  --audio-only         Extract audio instead of video
+  --audio-format FMT   flac, opus, mp3, m4a or wav (default: flac)
+  --cookies FILE       Netscape cookies file for authenticated sites
+  --downloader NAME    Use an external downloader, e.g. aria2c
+  --playlist           Download the whole playlist (default: single item)
+  --write-info-json    Save metadata next to each download
+  --archive FILE       Download archive (default: DIR/.ffbatch-download-archive.txt)
+  --no-archive         Do not use a download archive
+  --restrict-filenames ASCII-only filenames
+  --dry-run            Print the command without downloading
+  --config FILE        Use a specific ffbatch.json
+  --no-color           Disable ANSI colours
+
+A download archive makes repeated runs skip items that were already fetched.
+The downloaded folder can be passed straight to convert or watch.
+
+Examples:
+  ffbatch fetch "https://example.com/video" --output "D:\Incoming"
+  ffbatch fetch "https://example.com/playlist" --output "D:\Incoming" --playlist
+  ffbatch fetch "https://example.com/audio" --output "D:\Music" --audio-only --audio-format opus
+`
+
+const audioUsage = `Extract or convert the audio from media files.
+
+Usage:
+  ffbatch audio <file-or-folder...> [flags]
+
+Flags:
+  --output DIR         Write files here (default: next to each source)
+  --format FMT         flac | opus | mp3 | m4a | wav (default: flac)
+  --bitrate RATE       Bitrate for Opus/MP3/M4A (defaults: 128k/192k/192k)
+  --track N            Audio track index to extract (default: 0)
+  --recursive          Scan sub-folders
+  --normalize          Apply EBU R128 loudness normalization
+  --overwrite          Replace existing outputs
+  --json               Print a JSON result array
+  --dry-run            Print commands without writing files
+  --config FILE        Use a specific ffbatch.json
+  --no-color           Disable ANSI colours
+
+FLAC and WAV are lossless. Opus is efficient for speech; MP3/M4A are broadly
+compatible. The source video is discarded, and every output is probed before it
+is moved into place.
+
+Examples:
+  ffbatch audio "D:\Recordings" --recursive --format flac --output "D:\Audio"
+  ffbatch audio interview.mkv --format opus --bitrate 96k --normalize
+  ffbatch audio "D:\Music" --format mp3 --overwrite
 `
 
 const configUsage = `Inspect or create ffbatch.json.

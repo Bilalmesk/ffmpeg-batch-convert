@@ -25,6 +25,9 @@ func TestDefaultIsValid(t *testing.T) {
 	if cfg.Format != "mp4" || cfg.Mode != ModeRemux {
 		t.Fatalf("unexpected defaults: mode=%s format=%s", cfg.Mode, cfg.Format)
 	}
+	if cfg.AV1Encoder != "svt" {
+		t.Fatalf("av1Encoder default = %q, want svt", cfg.AV1Encoder)
+	}
 }
 
 func TestNormalize(t *testing.T) {
@@ -45,6 +48,11 @@ func TestNormalize(t *testing.T) {
 	if cfg.VideoCodec != "h264" {
 		t.Fatalf("video codec = %q", cfg.VideoCodec)
 	}
+	cfg.VideoCodec = "HEVC"
+	cfg.Normalize()
+	if cfg.VideoCodec != "h265" {
+		t.Fatalf("hevc alias = %q, want h265", cfg.VideoCodec)
+	}
 }
 
 func TestValidateRejectsBadValues(t *testing.T) {
@@ -60,6 +68,9 @@ func TestValidateRejectsBadValues(t *testing.T) {
 		{"extension", func(c *Config) { c.Extensions = []string{"m kv"} }, "invalid extension"},
 		{"overwrite", func(c *Config) { c.Overwrite = "merge" }, "overwrite must be"},
 		{"crf", func(c *Config) { c.Mode = ModeEncode; c.CRF = 99 }, "crf must be"},
+		{"av1 crf", func(c *Config) { c.Mode = ModeEncode; c.VideoCodec = "av1"; c.CRF = 64 }, "crf must be between 0 and 63"},
+		{"av1 encoder", func(c *Config) { c.Mode = ModeEncode; c.VideoCodec = "av1"; c.AV1Encoder = "nvenc" }, "av1Encoder must be"},
+		{"video codec", func(c *Config) { c.Mode = ModeEncode; c.VideoCodec = "vp9" }, "video codec must be"},
 		{"preset", func(c *Config) { c.Mode = ModeEncode; c.Preset = "hyperfast" }, "preset must be"},
 		{"audio", func(c *Config) { c.AudioCodec = "mp3" }, "audio codec must be"},
 		{"bitrate", func(c *Config) { c.AudioCodec = "aac"; c.AudioRate = "192" }, "audio bitrate"},
@@ -98,6 +109,9 @@ func TestLoadPartialKeepsDefaults(t *testing.T) {
 	}
 	if cfg.Preset != "fast" {
 		t.Fatalf("preset should keep its default, got %q", cfg.Preset)
+	}
+	if cfg.AV1Encoder != "svt" {
+		t.Fatalf("av1Encoder should keep its default, got %q", cfg.AV1Encoder)
 	}
 	if cfg.Workers < 1 {
 		t.Fatalf("workers should keep its default, got %d", cfg.Workers)
@@ -196,8 +210,22 @@ func TestRecipes(t *testing.T) {
 		t.Fatalf("unexpected hevc recipe: %+v ok=%v", cfg, ok)
 	}
 
+	cfg, ok = cfg.ApplyRecipe("encode-av1")
+	if !ok || cfg.Mode != ModeEncode || cfg.VideoCodec != "av1" || cfg.CRF != 30 {
+		t.Fatalf("unexpected av1 recipe: %+v ok=%v", cfg, ok)
+	}
+
 	if _, ok := cfg.ApplyRecipe("nope"); ok {
 		t.Fatal("unknown recipe should not apply")
+	}
+}
+
+func TestNormalizeTools(t *testing.T) {
+	cfg := Default()
+	cfg.Tools = map[string]string{" MKVMERGE ": " C:\\Tools\\mkvmerge.exe ", "": "x", "mp4box": ""}
+	cfg.Normalize()
+	if len(cfg.Tools) != 1 || cfg.Tools["mkvmerge"] != `C:\Tools\mkvmerge.exe` {
+		t.Fatalf("tools = %+v", cfg.Tools)
 	}
 }
 

@@ -357,6 +357,7 @@
     { id: "archiveDir", key: "archiveDir" },
     { id: "overwrite", key: "overwrite" },
     { id: "videoCodec", key: "videoCodec" },
+    { id: "av1Encoder", key: "av1Encoder" },
     { id: "crf", key: "crf", type: "number" },
     { id: "preset", key: "preset" },
     { id: "audioCodec", key: "audioCodec" },
@@ -433,6 +434,13 @@
     });
 
     $("#audioCodec").addEventListener("change", updateModeUI);
+    $("#videoCodec").addEventListener("change", () => {
+      readBinding(BINDINGS.find((binding) => binding.id === "videoCodec"));
+      updateModeUI();
+      renderCommandPreview();
+      updateLaunchSummary();
+      scheduleConfigSync();
+    });
 
     $("#format").addEventListener("change", () => {
       readBinding(BINDINGS.find((binding) => binding.id === "format"));
@@ -472,6 +480,14 @@
     };
     $("#modeNote").textContent = notes[mode] || "";
     $("#encodeOptions").classList.toggle("is-hidden", mode !== "encode");
+    const av1 = state.config.videoCodec === "av1";
+    $("#av1EncoderField").hidden = !(mode === "encode" && av1);
+    const crf = $("#crf");
+    if (crf) {
+      crf.max = av1 ? "63" : "51";
+      if (Number(crf.value) > Number(crf.max)) crf.value = crf.max;
+    }
+    syncCrf();
     const audio = state.config.audioCodec;
     $("#audioRateField").hidden = !(audio === "aac" || audio === "opus");
     $("#audioLanguageField").hidden = state.config.audioTracks !== "preferred";
@@ -548,8 +564,20 @@
     }
 
     if (cfg.mode === "encode") {
-      const encoder = cfg.videoCodec === "h265" || cfg.videoCodec === "hevc" ? "libx265" : "libx264";
-      groups.push(`-c:v ${encoder} -preset ${cfg.preset} -crf ${cfg.crf} -pix_fmt yuv420p`);
+      let encoder = "libx264";
+      let speed = `-preset ${cfg.preset}`;
+      if (cfg.videoCodec === "h265" || cfg.videoCodec === "hevc") {
+        encoder = "libx265";
+      } else if (cfg.videoCodec === "av1") {
+        encoder = cfg.av1Encoder === "aom" ? "libaom-av1" : cfg.av1Encoder === "rav1e" ? "librav1e" : "libsvtav1";
+        const svt = { ultrafast: 13, superfast: 12, veryfast: 11, faster: 10, fast: 9, medium: 8, slow: 6, slower: 4, veryslow: 2 };
+        const aom = { ultrafast: 8, superfast: 8, veryfast: 7, faster: 6, fast: 5, medium: 4, slow: 3, slower: 2, veryslow: 0 };
+        const rav1e = { ultrafast: 10, superfast: 10, veryfast: 9, faster: 8, fast: 7, medium: 6, slow: 4, slower: 2, veryslow: 1 };
+        if (cfg.av1Encoder === "aom") speed = `-cpu-used ${aom[cfg.preset] ?? 4}`;
+        else if (cfg.av1Encoder === "rav1e") speed = `-speed ${rav1e[cfg.preset] ?? 6}`;
+        else speed = `-preset ${svt[cfg.preset] ?? 8}`;
+      }
+      groups.push(`-c:v ${encoder} ${speed} -crf ${cfg.crf} -pix_fmt yuv420p`);
     } else {
       groups.push("-c:v copy");
     }

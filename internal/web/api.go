@@ -77,6 +77,8 @@ func (s *Server) handleCapabilities(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{
 		"formats":        config.SupportedFormats,
 		"presets":        config.SupportedPresets,
+		"videoCodecs":    config.SupportedVideoCodecs,
+		"av1Encoders":    config.SupportedAV1Encoders,
 		"extensions":     config.DefaultExtensions(),
 		"recipes":        config.Recipes(),
 		"modes":          []string{"remux", "encode", "rename"},

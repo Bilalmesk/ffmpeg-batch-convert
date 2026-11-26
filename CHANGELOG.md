@@ -4,6 +4,38 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [0.4.0] - 2026-11-26
+
+### Added
+
+- **AV1 encoding** with SVT-AV1, libaom-av1 and rav1e through the normal verified
+  pipeline. AV1 CRF uses the 0–63 scale, presets map to each encoder's speed
+  scale, and the dashboard exposes an AV1 encoder selector.
+- **`ffbatch quality`** compares a candidate encode with a reference using VMAF,
+  SSIM or PSNR, supports `--min` quality gates and JSON output.
+- **`ffbatch tools`** detects optional tools, versions, capabilities and install
+  hints. Paths can be overridden with the new `tools` config map.
+- **`ffbatch mux`** uses MKVToolNix to preserve MKV tracks, chapters, tags,
+  attachments, languages and track names without re-encoding.
+- **`ffbatch package`** creates HLS or DASH output using FFmpeg by default, with
+  optional MP4Box and Bento4 backends and `--dry-run` command previews.
+- **`ffbatch fetch`** downloads with yt-dlp, supports playlists, cookies,
+  audio-only extraction, aria2c and a persistent download archive.
+- **`ffbatch audio`** extracts one audio track to FLAC, Opus, MP3, M4A or WAV,
+  with optional EBU R128 loudness normalization, output probing and atomic
+  replacement.
+- **`docs/TOOLCHAIN.md`** explains which ecosystem tools are integrated, which
+  are detected companions, and why libav/GStreamer/MLT/PyAV/MoviePy/OpenCV and
+  the JS wrappers stay outside the Go binary.
+
+### Changed
+
+- `/api/capabilities` now reports `videoCodecs` and `av1Encoders`.
+- The dashboard exposes AV1 and its encoder selector; the CRF slider expands to
+  63 for AV1.
+- The encode recipe list includes "Re-encode to AV1".
+- `ffbatch.example.json` and the README document `av1Encoder` and `tools`.
+
 ## [0.3.1] - 2026-11-25
 
 ### Fixed

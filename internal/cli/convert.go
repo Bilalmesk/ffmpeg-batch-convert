@@ -32,6 +32,7 @@ type convertOptions struct {
 	crf         int
 	preset      string
 	codec       string
+	av1Encoder  string
 	audio       string
 	audioRate   string
 	audioTracks string
@@ -71,6 +72,7 @@ func registerConvertFlags(fs *flag.FlagSet, opts *convertOptions) {
 	fs.IntVar(&opts.crf, "crf", 0, "")
 	fs.StringVar(&opts.preset, "preset", "", "")
 	fs.StringVar(&opts.codec, "codec", "", "")
+	fs.StringVar(&opts.av1Encoder, "av1-encoder", "", "")
 	fs.StringVar(&opts.audio, "audio", "", "")
 	fs.StringVar(&opts.audioRate, "audio-bitrate", "", "")
 	fs.StringVar(&opts.audioTracks, "audio-tracks", "", "")
@@ -133,6 +135,9 @@ func resolveConvertOptions(fs *flag.FlagSet, opts *convertOptions) (config.Confi
 	}
 	if seen["codec"] {
 		cfg.VideoCodec = opts.codec
+	}
+	if seen["av1-encoder"] {
+		cfg.AV1Encoder = opts.av1Encoder
 	}
 	if seen["audio"] {
 		cfg.AudioCodec = opts.audio
